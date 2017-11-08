@@ -21,6 +21,7 @@ class SQLElixir:
         'bigint': sa.BigInteger,
         'bigserial': sa.BigInteger,
         'boolean': sa.Boolean,
+        'bytea': pg.BYTEA,
         'citext': sa.Text,
         'date': sa.Date,
         'double precision': sa.Float,
