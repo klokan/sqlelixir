@@ -131,7 +131,7 @@ class Parser:
 
     def parse_table(self):
         schema, name = self.parse_qualname()
-        primary_key = None
+        constraints = []
         args = []
         kwargs = {}
         args.append(name)
@@ -140,27 +140,57 @@ class Parser:
         self.expect('(')
         while not self.accept(')'):
             if self.accept('PRIMARY'):
-                primary_key = self.parse_primary_key()
+                constraints.append(self.parse_primary_key())
             elif self.accept('CONSTRAINT'):
-                pass
+                self.expect(tk.Name)
+                if self.accept('FOREIGN'):
+                    constraints.append(self.parse_foreign_key())
             elif self.accept(tk.Name):
                 args.append(self.parse_column())
             self.parse_until(',)')
             self.accept(',')
-        if primary_key is not None:
-            args.append(primary_key)
+        args.extend(constraints)
         table = sa.Table(*args, **kwargs)
         self.export(schema, name, table)
 
     def parse_primary_key(self):
-        primary_key = []
+        columns = []
         self.expect('KEY')
         self.expect('(')
         while not self.accept(')'):
             self.expect(tk.Name)
-            primary_key.append(self.value)
+            columns.append(self.value)
             self.accept(',')
-        return sa.PrimaryKeyConstraint(*primary_key)
+        return sa.PrimaryKeyConstraint(*columns)
+
+    def parse_foreign_key(self):
+        columns = []
+        self.expect('KEY')
+        self.expect('(')
+        while not self.accept(')'):
+            self.expect(tk.Name)
+            columns.append(self.value)
+            self.accept(',')
+        self.expect('REFERENCES')
+        refcolumns = self.parse_reference()
+        return sa.ForeignKeyConstraint(columns, refcolumns)
+
+    def parse_reference(self):
+        self.expect(tk.Name)
+        schema, name = self.parse_qualname()
+        if schema is not None:
+            reftable = self.metadata.tables['{}.{}'.format(schema, name)]
+        else:
+            reftable = self.metadata.tables[name]
+        if self.accept('('):
+            refcolumns = []
+            while not self.accept(')'):
+                self.expect(tk.Name)
+                refcolumns.append(reftable.columns[self.value])
+                self.accept(',')
+            return refcolumns
+        else:
+            return reftable.primary_key.columns.values()
 
     def parse_column(self):
         args = []
@@ -176,7 +206,8 @@ class Parser:
                 continue
             break
         if self.accept('REFERENCES'):
-            args.append(self.parse_reference())
+            refcolumn, = self.parse_reference()
+            args.append(sa.ForeignKey(refcolumn))
         elif self.accept('DEFAULT'):
             default = self.parse_default()
             if default is not None:
@@ -190,23 +221,6 @@ class Parser:
         schema, name = self.parse_qualname()
         type_ = self.types[schema][name]
         return type_
-
-    def parse_reference(self):
-        self.expect(tk.Name)
-        schema, name = self.parse_qualname()
-        if schema is not None:
-            remote_table = self.metadata.tables['{}.{}'.format(schema, name)]
-        else:
-            remote_table = self.metadata.tables[name]
-        if self.accept('('):
-            self.expect(tk.Name)
-            remote_column = remote_table.columns[self.value]
-            self.expect(')')
-        else:
-            remote_primary_key = remote_table.primary_key.columns.values()
-            assert len(remote_primary_key) == 1
-            remote_column = remote_primary_key[0]
-        return sa.ForeignKey(remote_column)
 
     def parse_default(self):
         if self.accept('TRUE'):
