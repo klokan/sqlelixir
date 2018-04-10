@@ -49,8 +49,9 @@ class SQLElixir:
         sys.meta_path.append(Package(self, qualname))
 
     def parse_module(self, module, text):
+        module.__text__ = text
         parser = Parser(self.types, self.metadata, module)
-        parser.parse(text)
+        parser.parse()
 
 
 class Package:
@@ -100,8 +101,8 @@ class Parser:
         self.next_value = None
         self.value = None
 
-    def parse(self, text):
-        for statement in sqlparse.parse(text):
+    def parse(self):
+        for statement in sqlparse.parse(self.module.__text__):
             self.begin(statement)
             self.parse_statement()
 
