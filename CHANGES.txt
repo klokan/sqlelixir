@@ -1,2 +1,3 @@
+v1.2, 2017-04-10 -- Store original SQL text.
 v1.1, 2017-11-08 -- Add bytea type, composite foreign key constraints.
 v1.0, 2017-10-23 -- Initial release.
