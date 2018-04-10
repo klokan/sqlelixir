@@ -270,7 +270,12 @@ class Parser:
                     value = int(value)
                 stream.append((tk.Number, value))
             elif ttype in tk.String:
-                stream.append((tk.String, token.value.strip("'")))
+                if token.value.startswith("'"):
+                    stream.append((tk.String, token.value.strip("'")))
+                elif token.value.startswith('"'):
+                    stream.append((tk.Name, token.value.strip('"')))
+                else:
+                    raise Exception
             elif ttype in tk.Name or ttype in tk.Keyword:
                 stream.append((tk.Name, token.value))
             else:
