@@ -205,6 +205,10 @@ class Parser:
             if self.accept('UNIQUE'):
                 kwargs['unique'] = True
                 continue
+            if self.accept('PRIMARY'):
+                self.expect('KEY')
+                kwargs['primary_key'] = True
+                continue
             break
         if self.accept('REFERENCES'):
             refcolumn, = self.parse_reference()
