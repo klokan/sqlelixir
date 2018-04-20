@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='SQLElixir',
-    version='1.4',
+    version='1.5',
     description='SQL files as Python modules',
     packages=['sqlelixir'],
     install_requires=[
