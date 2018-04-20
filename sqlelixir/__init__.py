@@ -27,6 +27,7 @@ class SQLElixir:
         'double precision': sa.Float,
         'float': sa.Float,
         'int': sa.Integer,
+        'integer': sa.Integer,
         'interval': sa.Interval,
         'json': pg.JSON,
         'jsonb': pg.JSONB,
