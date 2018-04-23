@@ -181,17 +181,19 @@ class Parser:
         self.expect(tk.Name)
         schema, name = self.parse_qualname()
         if schema is not None:
-            reftable = self.metadata.tables['{}.{}'.format(schema, name)]
+            qualname = '{}.{}'.format(schema, name)
         else:
-            reftable = self.metadata.tables[name]
+            qualname = name
         if self.accept('('):
             refcolumns = []
             while not self.accept(')'):
                 self.expect(tk.Name)
-                refcolumns.append(reftable.columns[self.value])
+                refcolumn = '{}.{}'.format(qualname, self.value)
+                refcolumns.append(refcolumn)
                 self.accept(',')
             return refcolumns
         else:
+            reftable = self.metadata.tables[qualname]
             return reftable.primary_key.columns.values()
 
     def parse_column(self):
