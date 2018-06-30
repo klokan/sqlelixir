@@ -32,6 +32,7 @@ class SQLElixir:
         'interval': sa.Interval,
         'json': pg.JSON,
         'jsonb': pg.JSONB,
+        'numeric': pg.NUMERIC,
         'serial': sa.Integer,
         'text': sa.Text,
         'time': sa.Time,
