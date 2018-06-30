@@ -1,3 +1,4 @@
+v1.7, 2018-06-30 -- Add daterange type.
 v1.6, 2018-04-23 -- Do not process foreign key references unless necessary.
 v1.5, 2018-04-20 -- Add integer built-in type.
 v1.4, 2018-04-20 -- Allow inline primary key declarations.
