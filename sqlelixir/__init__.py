@@ -24,6 +24,7 @@ class SQLElixir:
         'bytea': pg.BYTEA,
         'citext': sa.Text,
         'date': sa.Date,
+        'daterange': pg.DATERANGE,
         'double precision': sa.Float,
         'float': sa.Float,
         'int': sa.Integer,
