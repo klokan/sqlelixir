@@ -1,3 +1,4 @@
+v1.0, 2018-09-28 -- Add PostGIS and XML types.
 v1.8, 2018-06-30 -- Add numeric type.
 v1.7, 2018-06-30 -- Add daterange type.
 v1.6, 2018-04-23 -- Do not process foreign key references unless necessary.
