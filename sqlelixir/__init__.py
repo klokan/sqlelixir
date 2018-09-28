@@ -261,6 +261,9 @@ class Parser:
         self.expect(tk.Name)
         schema, name = self.parse_qualname()
         type_ = self.types[schema][name]
+        if self.accept('['):
+            self.expect(']')
+            type_ = pg.ARRAY(type_)
         return type_
 
     def parse_default(self):
