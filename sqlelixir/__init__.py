@@ -18,6 +18,29 @@ from sqlalchemy.sql.elements import ClauseElement, Executable
 from sqlparse import tokens as tk
 from struct import Struct
 from uuid import UUID
+from xml.etree import ElementTree
+
+
+class XML(sa.types.UserDefinedType):
+
+    def get_col_spec(self):
+        return 'XML'
+
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                return ElementTree.tostring(value, encoding='unicode')
+            else:
+                return None
+        return process
+
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            if value is not None:
+                return ElementTree.fromstring(value)
+            else:
+                return None
+        return process
 
 
 class SQLElixir:
@@ -48,6 +71,7 @@ class SQLElixir:
         'tsrange': pg.TSRANGE,
         'tstzrange': pg.TSTZRANGE,
         'uuid': pg.UUID(as_uuid=True),
+        'xml': XML,
     }
 
     def __init__(self, metadata=None):
