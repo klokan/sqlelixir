@@ -5,6 +5,11 @@ import sqlalchemy as sa
 import sqlalchemy.dialects.postgresql as pg
 import sqlparse
 
+try:
+    from geoalchemy2 import Geography, Geometry
+except ImportError:
+    Geography = Geometry = None
+
 from collections import defaultdict
 from datetime import datetime
 from importlib.machinery import ModuleSpec
@@ -27,6 +32,8 @@ class SQLElixir:
         'daterange': pg.DATERANGE,
         'double precision': sa.Float,
         'float': sa.Float,
+        'geography': Geography,
+        'geometry': Geometry,
         'int': sa.Integer,
         'integer': sa.Integer,
         'interval': sa.Interval,
