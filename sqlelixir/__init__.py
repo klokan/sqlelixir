@@ -72,6 +72,7 @@ class SQLElixir:
         'timestamptz': sa.DateTime(timezone=True),
         'tsrange': pg.TSRANGE,
         'tstzrange': pg.TSTZRANGE,
+        'tsvector': pg.TSVECTOR,
         'uuid': pg.UUID(as_uuid=True),
         'xml': XML,
     }
