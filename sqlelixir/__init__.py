@@ -59,6 +59,8 @@ class SQLElixir:
         'geometry': Geometry,
         'int': sa.Integer,
         'integer': sa.Integer,
+        'int4range': pg.INT4RANGE,
+        'int8range': pg.INT8RANGE,
         'interval': sa.Interval,
         'json': pg.JSON,
         'jsonb': pg.JSONB,
