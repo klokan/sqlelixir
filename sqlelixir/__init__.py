@@ -5,11 +5,6 @@ import sqlalchemy as sa
 import sqlalchemy.dialects.postgresql as pg
 import sqlparse
 
-try:
-    from geoalchemy2 import Geography, Geometry
-except ImportError:
-    Geography = Geometry = None
-
 from collections import defaultdict
 from datetime import datetime
 from importlib.machinery import ModuleSpec
@@ -19,6 +14,17 @@ from sqlparse import tokens as tk
 from struct import Struct
 from uuid import UUID
 from xml.etree import ElementTree
+
+
+try:
+    from geoalchemy2 import Geography, Geometry
+except ImportError:
+    Geography = Geometry = None
+
+try:
+    from sqlalchemy_utils import LtreeType
+except ImportError:
+    LtreeType = None
 
 
 class XML(sa.types.UserDefinedType):
@@ -64,6 +70,7 @@ class SQLElixir:
         'interval': sa.Interval,
         'json': pg.JSON,
         'jsonb': pg.JSONB,
+        'ltree': LtreeType,
         'numeric': pg.NUMERIC,
         'serial': sa.Integer,
         'text': sa.Text,
