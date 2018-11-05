@@ -1,3 +1,4 @@
+v1.12, 2018-11-05 -- Add ltree type.
 v1.11, 2018-09-30 -- Add integer range and fulltext search types.
 v1.10, 2018-09-28 -- Add one-dimensional array types.
 v1.9, 2018-09-28 -- Add PostGIS and XML types.
