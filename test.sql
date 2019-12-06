@@ -11,6 +11,8 @@ CREATE TABLE test.test_parents (
     created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     availability daterange,
     numbers int[],
+    geotransform double precision[6],
+    matrix float[][]
 );
 
 CREATE TABLE test.test_children (

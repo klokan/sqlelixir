@@ -289,8 +289,14 @@ class Parser:
         schema, name = self.parse_qualname()
         type_ = self.types[schema][name]
         if self.accept("["):
+            dimensions = 1
+            self.accept(tk.Number)
             self.expect("]")
-            type_ = pg.ARRAY(type_)
+            while self.accept("["):
+                dimensions += 1
+                self.accept(tk.Number)
+                self.expect("]")
+            type_ = pg.ARRAY(type_, dimensions=dimensions)
         return type_
 
     def parse_default(self):
