@@ -12,7 +12,8 @@ CREATE TABLE test.test_parents (
     availability daterange,
     numbers int[],
     geotransform double precision[6],
-    matrix float[][]
+    matrix float[][],
+    states test.test_states[]
 );
 
 CREATE TABLE test.test_children (

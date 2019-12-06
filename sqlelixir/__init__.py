@@ -1,4 +1,5 @@
 import os.path
+import re
 import sys
 
 import sqlalchemy as sa
@@ -26,6 +27,30 @@ try:
     from sqlalchemy_utils import LtreeType
 except ImportError:
     LtreeType = None
+
+
+
+# https://docs.sqlalchemy.org/en/13/dialects/postgresql.html#using-enum-with-array
+class ArrayOfEnum(sa.TypeDecorator):
+    impl = pg.ARRAY
+
+    def bind_expression(self, bindvalue):
+        return sa.cast(bindvalue, self)
+
+    def result_processor(self, dialect, coltype):
+        super_rp = super(ArrayOfEnum, self).result_processor(dialect, coltype)
+
+        def handle_raw_string(value):
+            inner = re.match(r"^{(.*)}$", value).group(1)
+            return inner.split(",") if inner else []
+
+        def process(value):
+            if value is not None:
+                return super_rp(handle_raw_string(value))
+            else:
+                return None
+
+        return process
 
 
 class XML(sa.types.UserDefinedType):
@@ -296,7 +321,12 @@ class Parser:
                 dimensions += 1
                 self.accept(tk.Number)
                 self.expect("]")
-            type_ = pg.ARRAY(type_, dimensions=dimensions)
+            if isinstance(type_, sa.Enum):
+                if dimensions != 1:
+                    raise RuntimeError("Mulitple dimensions for enum array", schema, name)
+                type_ = ArrayOfEnum(type_)
+            else:
+                type_ = pg.ARRAY(type_, dimensions=dimensions)
         return type_
 
     def parse_default(self):
