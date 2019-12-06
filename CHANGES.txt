@@ -1,3 +1,4 @@
+v1.14, 2019-12-06 -- Add array dimensions, enum arrays.
 v1.13, 2019-12-06 -- Add functions, import_module, tests; run black.
 v1.12, 2018-11-05 -- Add ltree type.
 v1.11, 2018-09-30 -- Add integer range and fulltext search types.
