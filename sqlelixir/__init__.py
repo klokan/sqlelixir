@@ -116,6 +116,9 @@ class SQLElixir:
         self.types[None] = self.builtin_types.copy()
         self.metadata = metadata
 
+    def register_type(self, type, name, schema=None):
+        self.types[schema][name] = type
+
     def register_package(self, qualname):
         sys.meta_path.append(Package(self, qualname))
 

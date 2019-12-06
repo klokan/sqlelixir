@@ -13,7 +13,8 @@ CREATE TABLE test.test_parents (
     numbers int[],
     geotransform double precision[6],
     matrix float[][],
-    states test.test_states[]
+    states test.test_states[],
+    bbox box
 );
 
 CREATE TABLE test.test_children (
