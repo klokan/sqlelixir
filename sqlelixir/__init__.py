@@ -12,6 +12,7 @@ from io import BytesIO
 from sqlalchemy.sql.elements import ClauseElement, Executable
 from sqlparse import tokens as tk
 from struct import Struct
+from types import SimpleNamespace
 from uuid import UUID
 from xml.etree import ElementTree
 
@@ -93,8 +94,17 @@ class SQLElixir:
     def register_package(self, qualname):
         sys.meta_path.append(Package(self, qualname))
 
-    def parse_module(self, module, text):
-        module.__text__ = text
+    def import_module(self, path):
+        module = SimpleNamespace()
+        with self.open_module(path) as fp:
+            self.parse_module(module, fp)
+        return module
+
+    def open_module(self, path):
+        return open(path, "r", encoding="utf-8")
+
+    def parse_module(self, module, fp):
+        module.__text__ = fp.read()
         parser = Parser(self.types, self.metadata, module)
         parser.parse()
 
@@ -115,7 +125,7 @@ class Package:
         for entry in path:
             full_path = os.path.join(entry, names[-1] + ".sql")
             try:
-                fp = open(full_path, "r", encoding="utf-8")
+                fp = self.elixir.open_module(full_path)
             except FileNotFoundError:
                 continue
             return ModuleSpec(
@@ -128,7 +138,7 @@ class Package:
 
     def exec_module(self, module):
         with module.__spec__.loader_state as fp:
-            self.elixir.parse_module(module, fp.read())
+            self.elixir.parse_module(module, fp)
 
 
 class Parser:
