@@ -14,7 +14,8 @@ CREATE TABLE test.test_parents (
     geotransform double precision[6],
     matrix float[][],
     states test.test_states[],
-    bbox box
+    bbox box,
+    metadata jsonb AS metadata_
 );
 
 CREATE TABLE test.test_children (

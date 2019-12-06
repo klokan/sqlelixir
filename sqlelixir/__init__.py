@@ -287,7 +287,7 @@ class Parser:
     def parse_column(self):
         args = []
         kwargs = {}
-        args.append(self.value)
+        name = self.value
         args.append(self.parse_column_type())
         while True:
             if self.accept("NOT NULL"):
@@ -310,6 +310,10 @@ class Parser:
                 kwargs["default"] = default
             else:
                 args.append(sa.FetchedValue())
+        if self.accept("AS"):
+            self.expect(tk.Name)
+            name = self.value
+        args.insert(0, name)
         return sa.Column(*args, **kwargs)
 
     def parse_column_type(self):
