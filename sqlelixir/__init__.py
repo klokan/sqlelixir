@@ -156,10 +156,20 @@ class Parser:
                 self.expect(tk.Name)
                 self.schema = self.value
                 return
+            if self.accept('FUNCTION') and self.accept(tk.Name):
+                return self.parse_function()
             if self.accept('TYPE') and self.accept(tk.Name):
                 return self.parse_type()
             if self.accept('TABLE') and self.accept(tk.Name):
                 return self.parse_table()
+
+    def parse_function(self):
+        schema, name = self.parse_qualname()
+        if schema is not None:
+            func = getattr(getattr(sa.func, schema), name)
+        else:
+            func = getattr(sa.func, name)
+        self.export(schema, name, func)
 
     def parse_type(self):
         schema, name = self.parse_qualname()
