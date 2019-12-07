@@ -1,3 +1,4 @@
+v1.17, 2019-12-07 -- Add prepared texts
 v1.16, 2019-12-07 -- Use column alias as key
 v1.15, 2019-12-06 -- Add custom type registration, column aliases.
 v1.14, 2019-12-06 -- Add array dimensions, enum arrays.
