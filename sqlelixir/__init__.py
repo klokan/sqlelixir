@@ -174,6 +174,10 @@ class Parser:
         self.types = types
         self.metadata = metadata
         self.module = module
+        self.text_pattern = re.compile(
+            r"PREPARE\s+(?:(\w+)\.)?(\w+)\s+AS\s+(.*)",
+            re.ASCII | re.DOTALL | re.IGNORECASE
+        )
         self.schema = None
         self.stream = None
         self.next_type = None
@@ -181,9 +185,20 @@ class Parser:
         self.value = None
 
     def parse(self):
-        for statement in sqlparse.parse(self.module.__text__):
-            self.begin(statement)
-            self.parse_statement()
+        for part in sqlparse.split(self.module.__text__):
+            match = self.text_pattern.match(part)
+            if match is not None:
+                self.parse_text(match)
+                continue
+            for statement in sqlparse.parse(part):
+                self.begin(statement)
+                self.parse_statement()
+
+    def parse_text(self, match):
+        schema = match.group(1)
+        name = match.group(2)
+        text = sa.text(match.group(3))
+        self.export(schema, name, text)
 
     def parse_statement(self):
         if self.accept("CREATE"):

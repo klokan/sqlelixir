@@ -28,3 +28,8 @@ CREATE TABLE test.test_children (
 CREATE FUNCTION test.test_function(int) RETURNS int AS $$
     SELECT $1 * 2;
 $$ LANGUAGE SQL IMMUTABLE STRICT;
+
+PREPARE test.test_query AS
+SELECT *
+  FROM test.test_parents
+ WHERE is_public;
