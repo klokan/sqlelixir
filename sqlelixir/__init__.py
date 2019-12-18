@@ -304,6 +304,9 @@ class Parser:
         kwargs = {}
         args.append(self.value)
         args.append(self.parse_column_type())
+        if self.accept("AS"):
+            self.expect(tk.Name)
+            kwargs["key"] = self.value
         while True:
             if self.accept("NOT NULL"):
                 kwargs["nullable"] = False
@@ -325,9 +328,6 @@ class Parser:
                 kwargs["default"] = default
             else:
                 args.append(sa.FetchedValue())
-        if self.accept("AS"):
-            self.expect(tk.Name)
-            kwargs["key"] = self.value
         return sa.Column(*args, **kwargs)
 
     def parse_column_type(self):
