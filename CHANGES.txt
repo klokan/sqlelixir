@@ -1,3 +1,4 @@
+v1.19, 2020-11-13 -- Add procedures, use tokenizer for prepared statements.
 v1.18, 2020-01-21 -- Remove Flask integration, move column alias right after type.
 v1.17, 2019-12-07 -- Add prepared texts
 v1.16, 2019-12-07 -- Use column alias as key
