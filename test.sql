@@ -29,7 +29,12 @@ CREATE FUNCTION test.test_function(int) RETURNS int AS $$
     SELECT $1 * 2;
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 
+CREATE PROCEDURE test.test_procedure(v_parent_id uuid) AS $$
+    DELETE FROM test.test_parents
+     WHERE parent_id = v_parent_id;
+$$ LANGUAGE SQL;
+
 PREPARE test.test_query AS
 SELECT *
   FROM test.test_parents
- WHERE is_public;
+ WHERE parent_id = :parent_id;

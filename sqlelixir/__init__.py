@@ -2,21 +2,22 @@ import os.path
 import re
 import sys
 
-import sqlalchemy as sa
-import sqlalchemy.dialects.postgresql as pg
-import sqlparse
-
 from collections import defaultdict
 from datetime import datetime
 from importlib.machinery import ModuleSpec
 from io import BytesIO
-from sqlalchemy.sql.elements import ClauseElement, Executable
-from sqlparse import tokens as tk
 from struct import Struct
+from textwrap import dedent
 from types import SimpleNamespace
 from uuid import UUID
 from xml.etree import ElementTree
 
+import sqlalchemy as sa
+import sqlalchemy.dialects.postgresql as pg
+import sqlparse
+
+from sqlalchemy.sql.elements import ClauseElement, Executable
+from sqlparse import tokens as tk
 
 try:
     from geoalchemy2 import Geography, Geometry
@@ -174,10 +175,6 @@ class Parser:
         self.types = types
         self.metadata = metadata
         self.module = module
-        self.text_pattern = re.compile(
-            r"PREPARE\s+(?:(\w+)\.)?(\w+)\s+AS\s+(.*)",
-            re.ASCII | re.DOTALL | re.IGNORECASE
-        )
         self.schema = None
         self.stream = None
         self.next_type = None
@@ -186,18 +183,26 @@ class Parser:
 
     def parse(self):
         for part in sqlparse.split(self.module.__text__):
-            match = self.text_pattern.match(part)
-            if match is not None:
-                self.parse_text(match)
-                continue
             for statement in sqlparse.parse(part):
-                self.begin(statement)
-                self.parse_statement()
+                if statement[0].ttype is tk.Keyword and statement[0].value == "PREPARE":
+                    self.begin_text(statement)
+                    self.parse_text()
+                else:
+                    self.begin_statement(statement)
+                    self.parse_statement()
 
-    def parse_text(self, match):
-        schema = match.group(1)
-        name = match.group(2)
-        text = sa.text(match.group(3))
+    def parse_text(self):
+        self.expect("PREPARE")
+        self.expect(tk.Whitespace)
+        self.expect(tk.Name)
+        schema, name = self.parse_qualname()
+        self.expect(tk.Whitespace)
+        self.expect("AS")
+        parts = []
+        while not self.accept(";"):
+            self.advance()
+            parts.append(self.value)
+        text = sa.text(dedent("".join(parts)).strip())
         self.export(schema, name, text)
 
     def parse_statement(self):
@@ -205,12 +210,13 @@ class Parser:
             if self.accept("SCHEMA"):
                 self.expect(tk.Name)
                 self.schema = self.value
-                return
-            if self.accept("FUNCTION") and self.accept(tk.Name):
+            elif self.accept("FUNCTION") and self.accept(tk.Name):
                 return self.parse_function()
-            if self.accept("TYPE") and self.accept(tk.Name):
+            elif self.accept("PROCEDURE") and self.accept(tk.Name):
+                return self.parse_procedure()
+            elif self.accept("TYPE") and self.accept(tk.Name):
                 return self.parse_type()
-            if self.accept("TABLE") and self.accept(tk.Name):
+            elif self.accept("TABLE") and self.accept(tk.Name):
                 return self.parse_table()
 
     def parse_function(self):
@@ -220,6 +226,29 @@ class Parser:
         else:
             func = getattr(sa.func, name)
         self.export(schema, name, func)
+
+    def parse_procedure(self):
+        schema, name = self.parse_qualname()
+        if schema is not None:
+            procname = "{}.{}".format(schema, name)
+        else:
+            procname = name
+        arglist = []
+        params = []
+        self.expect("(")
+        while not self.accept(")"):
+            self.expect(tk.Name)
+            argname = self.value
+            if argname.startswith("v_"):
+                __, __, argname = argname.partition("_")
+            arglist.append(":{}".format(argname))
+            argtype = self.parse_column_type()
+            params.append(sa.bindparam(argname, type_=argtype))
+            self.parse_until(",)")
+            self.accept(",")
+        text = sa.text("CALL {}({})".format(procname, ",".join(arglist)))
+        text = text.bindparams(*params)
+        self.export(schema, name, text)
 
     def parse_type(self):
         schema, name = self.parse_qualname()
@@ -383,15 +412,33 @@ class Parser:
                 continue
             self.advance()
 
-    def begin(self, statement):
+    def begin_text(self, statement):
+        stream = []
+        for token in statement.flatten():
+            ttype = token.ttype
+            if ttype in tk.Whitespace:
+                stream.append((tk.Whitespace, token.value))
+            elif ttype in tk.Number:
+                stream.append((tk.Number, token.value))
+            elif ttype in tk.String:
+                stream.append((tk.String, token.value))
+            elif ttype in tk.Name or ttype in tk.Keyword:
+                stream.append((tk.Name, token.value))
+            else:
+                stream.append((tk.Generic, token.value))
+        self.stream = iter(stream)
+        self.next_value = None
+        self.advance()
+
+    def begin_statement(self, statement):
         stream = []
         for token in statement.flatten():
             ttype = token.ttype
             if ttype in tk.Whitespace:
                 continue
-            if ttype in tk.Comment:
+            elif ttype in tk.Comment:
                 continue
-            if ttype in tk.Number:
+            elif ttype in tk.Number:
                 value = float(token.value)
                 if value.is_integer:
                     value = int(value)
@@ -429,7 +476,9 @@ class Parser:
 
     def expect(self, pattern):
         if not self.accept(pattern):
-            raise Exception
+            raise RuntimeError(
+                "Expectation failed", pattern, self.next_type, self.next_value
+            )
 
     def advance(self):
         self.value = self.next_value

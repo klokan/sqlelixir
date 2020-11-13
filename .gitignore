@@ -1,1 +1,3 @@
 __pycache__/
+venv/
+SQLElixir.egg-info/
