@@ -112,10 +112,18 @@ class SQLElixir:
         "xml": XML,
     }
 
+    @staticmethod
+    def enum_values(enum):
+        return [member.value for member in enum]
+
     def __init__(self, metadata=None):
         self.types = defaultdict(dict)
         self.types[None] = self.builtin_types.copy()
         self.metadata = metadata
+
+    def register_enum(self, enum, name, schema=None, **kwargs):
+        type = sa.Enum(enum, schema=schema, name=name, **kwargs)
+        self.register_type(type, name, schema)
 
     def register_type(self, type, name, schema=None):
         self.types[schema][name] = type
@@ -259,9 +267,11 @@ class Parser:
                 self.expect(tk.String)
                 variants.append(self.value)
                 self.accept(",")
-            enum = sa.Enum(*variants, schema=schema, name=name)
-            self.export(schema, name, enum)
-            self.types[schema][name] = enum
+            type = self.types[schema].get(name)
+            if type is None:
+                type = sa.Enum(*variants, schema=schema, name=name)
+                self.types[schema][name] = type
+            self.export(schema, name, type)
 
     def parse_table(self):
         schema, name = self.parse_qualname()
