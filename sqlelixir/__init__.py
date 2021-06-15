@@ -536,6 +536,8 @@ class Parser:
                     parts.clear()
                     continue
                 parts.append(self.value)
+            elif self.accept(tk.Number):
+                parts.append(str(self.value))
             elif self.accept(tk.String):
                 parts.append(f"'{self.value}'")  # XXX
             else:
@@ -586,6 +588,8 @@ class Parser:
                     break
                 parts.append(self.value)
                 depth -= 1
+            elif self.accept(tk.Number):
+                parts.append(str(self.value))
             elif self.accept(tk.String):
                 parts.append(f"'{self.value}'")  # XXX
             else:
