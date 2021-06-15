@@ -25,6 +25,10 @@ CREATE TABLE test.test_parents (
          WHERE (state = 'pending')
 );
 
+CREATE INDEX test_parents
+    ON test.test_parents (created) INCLUDE (state)
+ WHERE (is_public);
+
 CREATE TABLE test.test_children (
     PRIMARY KEY (parent_id, name),
     parent_id uuid NOT NULL REFERENCES test.test_parents (parent_id) ON DELETE CASCADE,
@@ -32,6 +36,9 @@ CREATE TABLE test.test_children (
     full_name text NOT NULL UNIQUE,
     full_name_length int NOT NULL GENERATED ALWAYS AS (length(full_name)) STORED
 );
+
+CREATE INDEX test_children_unaccented_full_name
+    ON test.test_children (unaccent(full_name));
 
 CREATE TABLE test.test_children_items (
     PRIMARY KEY (item_id),

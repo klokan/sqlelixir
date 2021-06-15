@@ -217,14 +217,23 @@ class Parser:
             if self.accept("SCHEMA"):
                 self.expect(tk.Name)
                 self.schema = self.value
-            elif self.accept("FUNCTION") and self.accept(tk.Name):
-                return self.parse_function()
-            elif self.accept("PROCEDURE") and self.accept(tk.Name):
-                return self.parse_procedure()
-            elif self.accept("TYPE") and self.accept(tk.Name):
-                return self.parse_type()
-            elif self.accept("TABLE") and self.accept(tk.Name):
-                return self.parse_table()
+            elif self.accept("FUNCTION"):
+                if self.accept(tk.Name):
+                    return self.parse_function()
+            elif self.accept("PROCEDURE"):
+                if self.accept(tk.Name):
+                    return self.parse_procedure()
+            elif self.accept("TYPE"):
+                if self.accept(tk.Name):
+                    return self.parse_type()
+            elif self.accept("TABLE"):
+                if self.accept(tk.Name):
+                    return self.parse_table()
+            elif self.accept("INDEX"):
+                return self.parse_index(unique=False)
+            elif self.accept("UNIQUE"):
+                if self.accept("INDEX"):
+                    return self.parse_index(unique=True)
 
     def parse_function(self):
         schema, name = self.parse_qualname()
@@ -416,28 +425,6 @@ class Parser:
         condition = self.parse_expression_subclause()
         return sa.CheckConstraint(condition, name=constraint_name)
 
-    # XXX This is not very robust and doesn't preserve the original formatting.
-    def parse_expression_subclause(self):
-        depth = 0
-        parts = []
-        self.expect("(")
-        while True:
-            if self.accept("("):
-                depth += 1
-                parts.append(self.value)
-            elif self.accept(")"):
-                if depth == 0:
-                    break
-                else:
-                    parts.append(self.value)
-                    depth -= 1
-            elif self.accept(tk.String):
-                parts.append(f"'{self.value}'")  # XXX
-            else:
-                self.advance()
-                parts.append(self.value)
-        return " ".join(parts)
-
     def parse_column(self):
         args = []
         kwargs = {}
@@ -515,6 +502,68 @@ class Parser:
             return self.value
         return None
 
+    def parse_index(self, unique):
+        self.expect(tk.Name)
+        name = self.value
+        if self.accept("USING"):
+            self.expect(tk.Name)
+            using = self.value
+        else:
+            using = None
+        self.expect("ON")
+        self.expect(tk.Name)
+        schema, table_name = self.parse_qualname()
+        assert schema == self.schema
+        table = getattr(self.module, table_name)
+        depth = 0
+        parts = []
+        expressions = []
+        self.expect("(")
+        while True:
+            if self.accept("("):
+                depth += 1
+                parts.append(self.value)
+            elif self.accept(")"):
+                if depth == 0:
+                    expressions.append(sa.text(" ".join(parts)))
+                    parts.clear()
+                    break
+                depth -= 1
+                parts.append(self.value)
+            elif self.accept(","):
+                if depth == 0:
+                    expressions.append(sa.text(" ".join(parts)))
+                    parts.clear()
+                    continue
+                parts.append(self.value)
+            elif self.accept(tk.String):
+                parts.append(f"'{self.value}'")  # XXX
+            else:
+                self.advance()
+                parts.append(self.value)
+        include = []
+        if self.accept("INCLUDE"):
+            self.expect("(")
+            while True:
+                self.expect(tk.Name)
+                include.append(self.value)
+                if not self.accept(","):
+                    break
+            self.expect(")")
+        if self.accept("WHERE"):
+            where = self.parse_expression_subclause()
+        else:
+            where = None
+        index = sa.Index(
+            name,
+            *expressions,
+            unique=unique,
+            postgresql_using=using,
+            postgresql_include=include,
+            postgresql_where=where,
+        )
+        table.append_constraint(index)
+
     def parse_qualname(self):
         name = self.value
         if self.accept("."):
@@ -522,6 +571,27 @@ class Parser:
             return name, self.value
         else:
             return None, name
+
+    # XXX This is not very robust and doesn't preserve the original formatting.
+    def parse_expression_subclause(self):
+        depth = 0
+        parts = []
+        self.expect("(")
+        while True:
+            if self.accept("("):
+                depth += 1
+                parts.append(self.value)
+            elif self.accept(")"):
+                if depth == 0:
+                    break
+                parts.append(self.value)
+                depth -= 1
+            elif self.accept(tk.String):
+                parts.append(f"'{self.value}'")  # XXX
+            else:
+                self.advance()
+                parts.append(self.value)
+        return " ".join(parts)
 
     def parse_until(self, terminators):
         depth = 0
