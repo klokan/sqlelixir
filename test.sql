@@ -9,20 +9,44 @@ CREATE TABLE test.test_parents (
     state test.test_states NOT NULL DEFAULT 'pending',
     title text DEFAULT 'Something',
     created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    availability daterange,
+    availability daterange CHECK (NOT is_empty(availability)),
     numbers int[],
     geotransform double precision[6],
     matrix float[][],
     states test.test_states[],
     bbox box,
-    metadata jsonb AS metadata_
+    metadata jsonb AS metadata_,
+
+    CONSTRAINT test_parents_state_valid_check
+         CHECK (state = ANY(states)),
+
+    CONSTRAINT test_parents_pending_availability_excl
+       EXCLUDE USING GIST (availability WITH &&)
+         WHERE (state = 'pending')
 );
 
 CREATE TABLE test.test_children (
     PRIMARY KEY (parent_id, name),
-    parent_id uuid NOT NULL REFERENCES test.test_parents (parent_id),
+    parent_id uuid NOT NULL REFERENCES test.test_parents (parent_id) ON DELETE CASCADE,
     name citext NOT NULL,
-    full_name text NOT NULL UNIQUE
+    full_name text NOT NULL UNIQUE,
+    full_name_length int NOT NULL GENERATED ALWAYS AS (length(full_name)) STORED
+);
+
+CREATE TABLE test.test_children_items (
+    PRIMARY KEY (item_id),
+    item_id int NOT NULL GENERATED ALWAYS AS IDENTITY,
+    parent_id uuid,
+    name citext,
+
+    CONSTRAINT test_children_items_parent_id_name_key
+        UNIQUE (parent_id, name),
+
+    CONSTRAINT test_children_items_parent_id_name_fkey
+       FOREIGN KEY (parent_id, name)
+    REFERENCES test.test_children (parent_id, name)
+     ON UPDATE CASCADE
+     ON DELETE SET NULL
 );
 
 CREATE FUNCTION test.test_function(int) RETURNS int AS $$

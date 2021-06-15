@@ -30,7 +30,6 @@ except ImportError:
     LtreeType = None
 
 
-
 # https://docs.sqlalchemy.org/en/13/dialects/postgresql.html#using-enum-with-array
 class ArrayOfEnum(sa.TypeDecorator):
     impl = pg.ARRAY
@@ -263,10 +262,12 @@ class Parser:
         if self.accept("AS") and self.accept("ENUM"):
             variants = []
             self.expect("(")
-            while not self.accept(")"):
+            while True:
                 self.expect(tk.String)
                 variants.append(self.value)
-                self.accept(",")
+                if not self.accept(","):
+                    break
+            self.expect(")")
             type = self.types[schema].get(name)
             if type is None:
                 type = sa.Enum(*variants, schema=schema, name=name)
@@ -284,11 +285,23 @@ class Parser:
         self.expect("(")
         while not self.accept(")"):
             if self.accept("PRIMARY"):
-                constraints.append(self.parse_primary_key())
+                constraint = self.parse_primary_key_constraint()
+                constraints.append(constraint)
             elif self.accept("CONSTRAINT"):
                 self.expect(tk.Name)
+                constraint_name = self.value
                 if self.accept("FOREIGN"):
-                    constraints.append(self.parse_foreign_key())
+                    constraint = self.parse_foreign_key_constraint(constraint_name)
+                    constraints.append(constraint)
+                elif self.accept("UNIQUE"):
+                    constraint = self.parse_unique_constraint(constraint_name)
+                    constraints.append(constraint)
+                elif self.accept("EXCLUDE"):
+                    constraint = self.parse_exclude_constraint(constraint_name)
+                    constraints.append(constraint)
+                elif self.accept("CHECK"):
+                    constraint = self.parse_check_constraint(constraint_name)
+                    constraints.append(constraint)
             elif self.accept(tk.Name):
                 args.append(self.parse_column())
             self.parse_until(",)")
@@ -297,29 +310,34 @@ class Parser:
         table = sa.Table(*args, **kwargs)
         self.export(schema, name, table)
 
-    def parse_primary_key(self):
+    def parse_primary_key_constraint(self):
         columns = []
         self.expect("KEY")
         self.expect("(")
-        while not self.accept(")"):
+        while True:
             self.expect(tk.Name)
             columns.append(self.value)
-            self.accept(",")
+            if not self.accept(","):
+                break
+        self.expect(")")
         return sa.PrimaryKeyConstraint(*columns)
 
-    def parse_foreign_key(self):
+    def parse_foreign_key_constraint(self, constraint_name):
         columns = []
         self.expect("KEY")
         self.expect("(")
-        while not self.accept(")"):
+        while True:
             self.expect(tk.Name)
             columns.append(self.value)
-            self.accept(",")
+            if not self.accept(","):
+                break
+        self.expect(")")
         self.expect("REFERENCES")
-        refcolumns = self.parse_reference()
-        return sa.ForeignKeyConstraint(columns, refcolumns)
+        refcolumns = self.parse_foreign_key_reference()
+        params = self.parse_foreign_key_params()
+        return sa.ForeignKeyConstraint(columns, refcolumns, name=constraint_name, **params)
 
-    def parse_reference(self):
+    def parse_foreign_key_reference(self):
         self.expect(tk.Name)
         schema, name = self.parse_qualname()
         if schema is not None:
@@ -328,15 +346,97 @@ class Parser:
             qualname = name
         if self.accept("("):
             refcolumns = []
-            while not self.accept(")"):
+            while True:
                 self.expect(tk.Name)
                 refcolumn = "{}.{}".format(qualname, self.value)
                 refcolumns.append(refcolumn)
-                self.accept(",")
+                if not self.accept(","):
+                    break
+            self.expect(")")
             return refcolumns
         else:
             reftable = self.metadata.tables[qualname]
             return reftable.primary_key.columns.values()
+
+    def parse_foreign_key_params(self):
+        params = {}
+        while self.accept("ON"):
+            if self.accept("UPDATE"):
+                key = "onupdate"
+            elif self.accept("DELETE"):
+                key = "ondelete"
+            else:
+                raise RuntimeError
+            if self.accept("CASCADE") or self.accept("RESTRICT"):
+                value = self.value
+            elif self.accept("SET"):
+                self.expect("NULL")
+                value = "SET NULL"
+            params[key] = value
+        return params
+
+    def parse_unique_constraint(self, constraint_name):
+        columns = []
+        self.expect("(")
+        while True:
+            self.expect(tk.Name)
+            columns.append(self.value)
+            if not self.accept(","):
+                break
+        self.expect(")")
+        return sa.UniqueConstraint(*columns, name=constraint_name)
+
+    def parse_exclude_constraint(self, constraint_name):
+        if self.accept("USING"):
+            self.expect(tk.Name)
+            using = self.value
+        else:
+            using = None
+        elements = []
+        self.expect("(")
+        while True:
+            self.expect(tk.Name)
+            column = self.value
+            self.expect("WITH")
+            if self.accept("=") or self.accept("&&"):
+                operator = self.value
+            else:
+                raise RuntimeError
+            elements.append((column, operator))
+            if not self.accept(","):
+                break
+        self.expect(")")
+        if self.accept("WHERE"):
+            where = self.parse_expression_subclause()
+        else:
+            where = None
+        return pg.ExcludeConstraint(*elements, name=constraint_name, using=using, where=where)
+
+    def parse_check_constraint(self, constraint_name):
+        condition = self.parse_expression_subclause()
+        return sa.CheckConstraint(condition, name=constraint_name)
+
+    # XXX This is not very robust and doesn't preserve the original formatting.
+    def parse_expression_subclause(self):
+        depth = 0
+        parts = []
+        self.expect("(")
+        while True:
+            if self.accept("("):
+                depth += 1
+                parts.append(self.value)
+            elif self.accept(")"):
+                if depth == 0:
+                    break
+                else:
+                    parts.append(self.value)
+                    depth -= 1
+            elif self.accept(tk.String):
+                parts.append(f"'{self.value}'")  # XXX
+            else:
+                self.advance()
+                parts.append(self.value)
+        return " ".join(parts)
 
     def parse_column(self):
         args = []
@@ -349,24 +449,41 @@ class Parser:
         while True:
             if self.accept("NOT NULL"):
                 kwargs["nullable"] = False
-                continue
-            if self.accept("UNIQUE"):
+            elif self.accept("UNIQUE"):
                 kwargs["unique"] = True
-                continue
-            if self.accept("PRIMARY"):
+            elif self.accept("PRIMARY"):
                 self.expect("KEY")
                 kwargs["primary_key"] = True
-                continue
-            break
-        if self.accept("REFERENCES"):
-            (refcolumn,) = self.parse_reference()
-            args.append(sa.ForeignKey(refcolumn))
-        elif self.accept("DEFAULT"):
-            default = self.parse_default()
-            if default is not None:
-                kwargs["default"] = default
+            elif self.accept("REFERENCES"):
+                (refcolumn,) = self.parse_foreign_key_reference()
+                params = self.parse_foreign_key_params()
+                args.append(sa.ForeignKey(refcolumn, **params))
+            elif self.accept("CHECK"):
+                constraint = self.parse_check_constraint(None)
+                args.append(constraint)
+            elif self.accept("DEFAULT"):
+                default = self.parse_default()
+                if default is not None:
+                    kwargs["default"] = default
+                else:
+                    args.append(sa.FetchedValue())
+                    break
+            elif self.accept("GENERATED"):
+                always = False
+                if self.accept("ALWAYS"):
+                    always = True
+                elif self.accept("BY"):
+                    self.expect("DEFAULT")
+                self.expect("AS")
+                if self.accept("IDENTITY"):
+                    args.append(sa.Identity(always=always))
+                else:
+                    assert always
+                    expression = self.parse_expression_subclause()
+                    self.expect("STORED")
+                    args.append(sa.Computed(expression))
             else:
-                args.append(sa.FetchedValue())
+                break
         return sa.Column(*args, **kwargs)
 
     def parse_column_type(self):
@@ -383,7 +500,7 @@ class Parser:
                 self.expect("]")
             if isinstance(type_, sa.Enum):
                 if dimensions != 1:
-                    raise RuntimeError("Mulitple dimensions for enum array", schema, name)
+                    raise RuntimeError("Multiple dimensions for enum array", schema, name)
                 type_ = ArrayOfEnum(type_)
             else:
                 type_ = pg.ARRAY(type_, dimensions=dimensions)
