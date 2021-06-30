@@ -400,7 +400,7 @@ class Parser:
             self.expect(tk.Name)
             using = self.value
         else:
-            using = None
+            using = "gist"
         elements = []
         self.expect("(")
         while True:
