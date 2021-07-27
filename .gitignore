@@ -1,3 +1,2 @@
 __pycache__/
-venv/
-SQLElixir.egg-info/
+.pytest_cache
