@@ -5,6 +5,7 @@ description = "SQL files as Python modules"
 authors = ["Václav Klusák <vaclav.klusak@maptiler.com>"]
 
 [tool.poetry.dependencies]
+psycopg2-binary = "^2.8"
 python = "^3.10"
 SQLAlchemy = "^1.4"
 sqlparse = "^0.4"
