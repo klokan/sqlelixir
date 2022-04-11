@@ -1,9 +1,9 @@
 import os.path
 
+from collections.abc import Iterable
 from importlib.abc import MetaPathFinder, Loader
 from importlib.machinery import ModuleSpec
 from types import ModuleType
-from typing import Iterable, Optional
 
 from sqlelixir.parser import Parser
 
@@ -14,8 +14,8 @@ class Importer(MetaPathFinder, Loader):
         self.package_parts = package.split(".")
 
     def find_spec(
-        self, fullname: str, path: Optional[Iterable[str]], target=None
-    ) -> Optional[ModuleSpec]:
+        self, fullname: str, path: Iterable[str] | None, target=None
+    ) -> ModuleSpec | None:
         if path is None:
             return None
 

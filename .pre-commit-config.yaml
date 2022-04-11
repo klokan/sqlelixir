@@ -12,7 +12,7 @@ repos:
     name: black
     types: [python]
     language: system
-    entry: poetry run black --quiet --check --diff --target-version=py38
+    entry: poetry run black --quiet --check --diff --target-version=py310
   - id: flake8
     name: flake8
     types: [python]

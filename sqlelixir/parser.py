@@ -1,6 +1,7 @@
 from __future__ import annotations
+from collections.abc import Iterator
 from io import TextIOBase
-from typing import Any, Iterator, List, Optional, Tuple, Union
+from typing import Any
 
 import enum
 
@@ -37,12 +38,12 @@ class Parser:
     types: TypeRegistry
     metadata: MetaData
 
-    schema: Optional[str]
+    schema: str | None
     module: Any
 
-    stream: Iterator[Tuple[int, Token]]
-    stream_sentinel = Tuple[int, Token]
-    tokens: List[Token]
+    stream: Iterator[tuple[int, Token]]
+    stream_sentinel = tuple[int, Token]
+    tokens: list[Token]
     token: Token
     index: int
 
@@ -56,13 +57,13 @@ class Parser:
 
         self.schema = schema
 
-    def export(self, schema: Optional[str], name: str, obj: Any):
+    def export(self, schema: str | None, name: str, obj: Any):
         if schema != self.schema:
             raise RuntimeError("Invalid schema")
 
         setattr(self.module, name, obj)
 
-    def parse(self, sql: Union[str, TextIOBase], module: Any):
+    def parse(self, sql: str | TextIOBase, module: Any):
         self.schema = None
         self.module = module
 
@@ -146,7 +147,7 @@ class Parser:
 
         self.export(schema, name, table)
 
-    def parse_table_constraint(self) -> Optional[Constraint]:
+    def parse_table_constraint(self) -> Constraint | None:
         if self.accept_keyword("CONSTRAINT"):
             name = self.expect_name()
         else:
@@ -169,7 +170,7 @@ class Parser:
 
         return None
 
-    def parse_column(self) -> Tuple[Column, List[Constraint]]:
+    def parse_column(self) -> tuple[Column, list[Constraint]]:
         name = self.expect_name()
         type_ = self.parse_column_type()
 
@@ -205,7 +206,7 @@ class Parser:
         column = Column(name, type_, *items, key=key, nullable=nullable)
         return column, constraints
 
-    def parse_column_constraint(self, column: str) -> Optional[Constraint]:
+    def parse_column_constraint(self, column: str) -> Constraint | None:
         if self.accept_keyword("CONSTRAINT"):
             name = self.expect_name()
         else:
@@ -248,7 +249,7 @@ class Parser:
 
     def parse_column_default(
         self, type_: TypeEngine
-    ) -> Tuple[DefaultClause, Optional[ColumnDefault]]:
+    ) -> tuple[DefaultClause, ColumnDefault | None]:
         self.expect_keyword("DEFAULT")
 
         start = self.index
@@ -283,7 +284,7 @@ class Parser:
 
     def parse_column_generated(
         self,
-    ) -> Union[Computed, Identity]:
+    ) -> Computed | Identity:
         self.expect_keyword("GENERATED")
 
         if self.accept_keyword("ALWAYS"):
@@ -304,7 +305,7 @@ class Parser:
             return Computed(expression)
 
     def parse_primary_key_table_constraint(
-        self, name: Optional[str]
+        self, name: str | None
     ) -> PrimaryKeyConstraint:
         self.expect_keyword("PRIMARY")
         self.expect_keyword("KEY")
@@ -312,24 +313,24 @@ class Parser:
         return PrimaryKeyConstraint(*columns, name=name)
 
     def parse_primary_key_column_constraint(
-        self, name: Optional[str], column: str
+        self, name: str | None, column: str
     ) -> PrimaryKeyConstraint:
         self.expect_keyword("PRIMARY")
         self.expect_keyword("KEY")
         return PrimaryKeyConstraint(column, name=name)
 
-    def parse_unique_table_constraint(self, name: Optional[str]) -> UniqueConstraint:
+    def parse_unique_table_constraint(self, name: str | None) -> UniqueConstraint:
         self.expect_keyword("UNIQUE")
         columns = self.parse_column_list()
         return UniqueConstraint(*columns, name=name)
 
     def parse_unique_column_constraint(
-        self, name: Optional[str], column: str
+        self, name: str | None, column: str
     ) -> UniqueConstraint:
         self.expect_keyword("UNIQUE")
         return UniqueConstraint(column, name=name)
 
-    def parse_exclude_table_constraint(self, name: Optional[str]) -> ExcludeConstraint:
+    def parse_exclude_table_constraint(self, name: str | None) -> ExcludeConstraint:
         self.expect_keyword("EXCLUDE")
 
         if self.accept_keyword("USING"):
@@ -366,7 +367,7 @@ class Parser:
         )
 
     def parse_foreign_key_table_constraint(
-        self, name: Optional[str]
+        self, name: str | None
     ) -> ForeignKeyConstraint:
         self.expect_keyword("FOREIGN")
         self.expect_keyword("KEY")
@@ -374,12 +375,12 @@ class Parser:
         return self.parse_foreign_key_constraint(name, columns)
 
     def parse_foreign_key_column_constraint(
-        self, name: Optional[str], column: str
+        self, name: str | None, column: str
     ) -> ForeignKeyConstraint:
         return self.parse_foreign_key_constraint(name, [column])
 
     def parse_foreign_key_constraint(
-        self, name: Optional[str], columns: List[str]
+        self, name: str | None, columns: list[str]
     ) -> ForeignKeyConstraint:
         self.expect_keyword("REFERENCES")
 
@@ -442,7 +443,7 @@ class Parser:
 
         raise RuntimeError("Invalid foreign key action")
 
-    def parse_check_constraint(self, name: Optional[str]) -> CheckConstraint:
+    def parse_check_constraint(self, name: str | None) -> CheckConstraint:
         self.expect_keyword("CHECK")
         expression = self.parse_enclosed_expression()
         return CheckConstraint(expression, name=name)
@@ -485,7 +486,7 @@ class Parser:
         )
         table.append_constraint(index)
 
-    def parse_identifier(self) -> Tuple[Optional[str], str]:
+    def parse_identifier(self) -> tuple[str | None, str]:
         name1 = self.expect_name()
         if self.accept_punctuation("."):
             name2 = self.expect_name()
@@ -493,7 +494,7 @@ class Parser:
         else:
             return None, name1
 
-    def parse_column_list(self) -> List[str]:
+    def parse_column_list(self) -> list[str]:
         columns = []
         self.expect_punctuation("(")
 
@@ -533,7 +534,7 @@ class Parser:
 
         return self.format(start, end)
 
-    def parse_index_expression_list(self) -> List[Union[str, TextClause]]:
+    def parse_index_expression_list(self) -> list[str | TextClause]:
         expressions = []
         self.expect_punctuation("(")
 
@@ -549,7 +550,7 @@ class Parser:
         self.expect_punctuation(")")
         return expressions
 
-    def parse_index_expression(self) -> Union[str, TextClause]:
+    def parse_index_expression(self) -> str | TextClause:
         start = self.index
 
         if (column := self.accept_name()) is not None:
@@ -605,7 +606,7 @@ class Parser:
 
         self.export(schema, name, clause)
 
-    def accept_name(self) -> Optional[str]:
+    def accept_name(self) -> str | None:
         if self.token.is_keyword:
             name = self.token.value
         elif self.token.ttype in Name:
@@ -624,7 +625,7 @@ class Parser:
             raise RuntimeError("Expected name")
         return name
 
-    def accept_operator(self) -> Optional[str]:
+    def accept_operator(self) -> str | None:
         if self.token.ttype in Operator:
             value = self.token.value
             self.advance()
@@ -641,7 +642,7 @@ class Parser:
     def string_is_next(self) -> bool:
         return self.token.ttype in String
 
-    def accept_string(self) -> Optional[str]:
+    def accept_string(self) -> str | None:
         if self.token.ttype is String.Single:
             value = self.token.value.strip("'")
             self.advance()
@@ -658,7 +659,7 @@ class Parser:
     def number_is_next(self) -> bool:
         return self.token.ttype in Number
 
-    def accept_number(self) -> Union[int, float, None]:
+    def accept_number(self) -> int | float | None:
         if self.token.ttype is Number.Integer:
             value = int(self.token.value)
         elif self.token.ttype is Number.Float:
@@ -669,7 +670,7 @@ class Parser:
         self.advance()
         return value
 
-    def expect_number(self) -> Union[int, float]:
+    def expect_number(self) -> int | float:
         value = self.accept_number()
         if value is None:
             raise RuntimeError("Expected number")

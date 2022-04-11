@@ -5,16 +5,16 @@ description = "SQL files as Python modules"
 authors = ["Václav Klusák <vaclav.klusak@maptiler.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-SQLAlchemy = "^1.4.0"
-sqlparse = "^0.4.1"
+python = "^3.10"
+SQLAlchemy = "^1.4"
+sqlparse = "^0.4"
 
 [tool.poetry.dev-dependencies]
-flake8 = "^3.9.2"
-flake8-bugbear = "^21.4.3"
-black = "^21.7b0"
-pytest = "^6.2.4"
-pre-commit = "^2.14.0"
+black = "=22.3.0"
+flake8 = "=4.0.1"
+flake8-bugbear = "=22.1.11"
+pre-commit = "=2.17.0"
+pytest = "^6.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

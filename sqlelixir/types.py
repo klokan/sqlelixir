@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Optional, Type
+from typing import Type
 from xml.etree import ElementTree
 
 import enum
@@ -66,22 +66,22 @@ builtin_types = {
 
 
 class TypeRegistry:
-    types: DefaultDict[Optional[str], Dict[str, TypeEngine]]
+    types: defaultdict[str | None, dict[str, TypeEngine]]
 
     def __init__(self):
         self.types = defaultdict(dict)
         self.types[None] = builtin_types.copy()
 
-    def add(self, schema: Optional[str], name: str, type_: TypeEngine):
+    def add(self, schema: str | None, name: str, type_: TypeEngine):
         normalized_name = name.lower()
         if normalized_name in self.types[schema]:
             raise RuntimeError("Type already registered", schema, name)
 
         self.types[schema][normalized_name] = type_
 
-    def get(self, schema: Optional[str], name: str) -> Optional[TypeEngine]:
+    def get(self, schema: str | None, name: str) -> TypeEngine | None:
         return self.types[schema].get(name.lower())
 
 
-def python_enum_values(enum: Type[enum.Enum]) -> List[str]:
+def python_enum_values(enum: Type[enum.Enum]) -> list[str]:
     return [member.value for member in enum]
