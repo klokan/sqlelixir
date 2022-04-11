@@ -1,5 +1,11 @@
 ## Version 2
 
+### v2.1 (2022-04-12)
+- Upgrade to Python 3.10.
+- Add `pgcopy` utility.
+- Add views.
+- Add pragma `table_info()`.
+
 ### v2.0 (2021-08-10)
 - Separate into modules.
 - Refactor parsing completely.
