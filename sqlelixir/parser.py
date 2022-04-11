@@ -37,6 +37,7 @@ from sqlelixir.types import TypeRegistry
 class Parser:
     types: TypeRegistry
     metadata: MetaData
+    table_info: dict[str, str]
 
     schema: str | None
     module: Any
@@ -50,6 +51,7 @@ class Parser:
     def __init__(self, types: TypeRegistry, metadata: MetaData):
         self.types = types
         self.metadata = metadata
+        self.table_info = {}
 
     def declare_schema(self, schema: str):
         if self.schema is not None:
@@ -87,10 +89,13 @@ class Parser:
                     self.expect_keyword("INDEX")
                     self.parse_create_index(unique=True)
 
+            elif self.accept_keyword("PRAGMA"):
+                self.parse_pragma()
+
             elif self.keyword_is_next("PREPARE"):
                 self.parse_prepare()
 
-    def parse_create_type(self):
+    def parse_create_type(self) -> None:
         schema, name = self.parse_identifier()
         self.expect_keyword("AS")
 
@@ -117,10 +122,10 @@ class Parser:
 
             self.export(schema, name, type_)
 
-    def parse_create_table(self):
+    def parse_create_table(self) -> None:
         schema, name = self.parse_identifier()
 
-        table = Table(name, self.metadata, schema=schema)
+        table = Table(name, self.metadata, schema=schema, info=self.table_info)
         constraints = []
 
         self.expect_punctuation("(")
@@ -588,7 +593,24 @@ class Parser:
 
         return end
 
-    def parse_prepare(self):
+    def parse_pragma(self) -> None:
+        schema, name = self.parse_identifier()
+
+        if schema != self.schema:
+            raise RuntimeError("Invalid schema")
+
+        if name == "table_info":
+            self.expect_punctuation("(")
+            key = self.expect_string()
+            self.expect_punctuation(",")
+            value = self.expect_string()
+            self.expect_punctuation(")")
+            self.expect_punctuation(";")
+            self.table_info[key] = value
+        else:
+            raise RuntimeError("Unknown pragma")
+
+    def parse_prepare(self) -> None:
         self.expect_keyword("PREPARE")
         schema, name = self.parse_identifier()
         self.expect_keyword("AS")

@@ -606,6 +606,15 @@ def test_create_index(elixir: SQLElixir, module: SimpleNamespace):
         raise AssertionError("Index not found")
 
 
+def test_pragma_table_info(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    PRAGMA table_info('bind_key', 'my_bind');
+    CREATE TABLE widgets (widget_id uuid PRIMARY KEY);
+    """
+    elixir.parse(sql, module)
+    assert module.widgets.info["bind_key"] == "my_bind"
+
+
 def test_prepare(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     PREPARE widget_count AS SELECT count(*) FROM widgets WHERE deleted IS NULL;
