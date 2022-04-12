@@ -39,8 +39,11 @@ class SQLElixir:
     def register_type(self, schema: str | None, name: str, type_: TypeEngine):
         self.types.add(schema, name, type_)
 
-    def register_importer(self, package: str):
-        importer = Importer(self.parser, package)
+    def register_importer(self, patterns: str | list[str]):
+        if isinstance(patterns, str):
+            patterns = [patterns]
+
+        importer = Importer(self.parser, patterns)
         sys.meta_path.append(importer)
 
     def parse(self, sql: str | TextIOBase, module: Any):

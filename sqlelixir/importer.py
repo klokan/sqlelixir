@@ -1,4 +1,6 @@
+import fnmatch
 import os.path
+import re
 
 from collections.abc import Iterable
 from importlib.abc import MetaPathFinder, Loader
@@ -9,9 +11,10 @@ from sqlelixir.parser import Parser
 
 
 class Importer(MetaPathFinder, Loader):
-    def __init__(self, parser: Parser, package: str):
+    def __init__(self, parser: Parser, patterns: list[str]):
+        assert patterns
         self.parser = parser
-        self.package_parts = package.split(".")
+        self.patterns = [re.compile(fnmatch.translate(pattern)) for pattern in patterns]
 
     def find_spec(
         self, fullname: str, path: Iterable[str] | None, target=None
@@ -19,17 +22,15 @@ class Importer(MetaPathFinder, Loader):
         if path is None:
             return None
 
-        name_parts = fullname.split(".")
-        name = name_parts.pop()
-
-        if len(name_parts) < len(self.package_parts):
+        for pattern in self.patterns:
+            if pattern.fullmatch(fullname) is not None:
+                break
+        else:
             return None
 
-        for name_part, package_part in zip(name_parts, self.package_parts):
-            if name_part != package_part:
-                return None
+        __, __, name = fullname.rpartition(".")
+        filename = f"{name}.sql"
 
-        filename = name + ".sql"
         for entry in path:
             full_path = os.path.join(entry, filename)
             if os.path.exists(full_path):

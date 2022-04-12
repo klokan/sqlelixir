@@ -646,7 +646,7 @@ def test_prepare(elixir: SQLElixir, module: SimpleNamespace):
 
 # Run with pytest -s to see the output.
 def test_importer(elixir: SQLElixir):
-    elixir.register_importer("sqlelixir")
+    elixir.register_importer("sqlelixir.schema*")
     __import__("sqlelixir.schema_test")
 
     def dump(sql, *multiparams, **params):
