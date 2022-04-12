@@ -37,7 +37,6 @@ from sqlelixir.types import TypeRegistry
 class Parser:
     types: TypeRegistry
     metadata: MetaData
-    table_info: dict[str, str]
 
     schema: str | None
     module: Any
@@ -51,7 +50,6 @@ class Parser:
     def __init__(self, types: TypeRegistry, metadata: MetaData):
         self.types = types
         self.metadata = metadata
-        self.table_info = {}
 
     def declare_schema(self, schema: str):
         if self.schema is not None:
@@ -94,9 +92,6 @@ class Parser:
                     self.expect_keyword("VIEW")
                     self.parse_create_view()
 
-            elif self.accept_keyword("PRAGMA"):
-                self.parse_pragma()
-
             elif self.keyword_is_next("PREPARE"):
                 self.parse_prepare()
 
@@ -130,7 +125,7 @@ class Parser:
     def parse_create_table(self) -> None:
         schema, name = self.parse_identifier()
 
-        table = Table(name, self.metadata, schema=schema, info=self.table_info)
+        table = Table(name, self.metadata, schema=schema)
         constraints = []
 
         self.expect_punctuation("(")
@@ -498,7 +493,7 @@ class Parser:
 
     def parse_create_view(self) -> None:
         schema, name = self.parse_identifier()
-        table = Table(name, self.metadata, schema=schema, info=self.table_info)
+        table = Table(name, self.metadata, schema=schema)
         self.export(schema, name, table)
 
     def parse_identifier(self) -> tuple[str | None, str]:
@@ -602,23 +597,6 @@ class Parser:
             self.advance()
 
         return end
-
-    def parse_pragma(self) -> None:
-        schema, name = self.parse_identifier()
-
-        if schema != self.schema:
-            raise RuntimeError("Invalid schema")
-
-        if name == "table_info":
-            self.expect_punctuation("(")
-            key = self.expect_string()
-            self.expect_punctuation(",")
-            value = self.expect_string()
-            self.expect_punctuation(")")
-            self.expect_punctuation(";")
-            self.table_info[key] = value
-        else:
-            raise RuntimeError("Unknown pragma")
 
     def parse_prepare(self) -> None:
         self.expect_keyword("PREPARE")
