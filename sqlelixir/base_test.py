@@ -606,6 +606,32 @@ def test_create_index(elixir: SQLElixir, module: SimpleNamespace):
         raise AssertionError("Index not found")
 
 
+def test_create_view(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE VIEW test AS
+    SELECT * FROM widgets;
+    """
+
+    elixir.parse(sql, module)
+
+    table = module.test
+    assert isinstance(table, Table)
+    assert not table.columns
+
+
+def test_create_materialized_view(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE MATERIALIZED VIEW test AS
+    SELECT * FROM widgets;
+    """
+
+    elixir.parse(sql, module)
+
+    table = module.test
+    assert isinstance(table, Table)
+    assert not table.columns
+
+
 def test_pragma_table_info(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     PRAGMA table_info('bind_key', 'my_bind');

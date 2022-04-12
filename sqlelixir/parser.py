@@ -88,6 +88,11 @@ class Parser:
                 elif self.accept_keyword("UNIQUE"):
                     self.expect_keyword("INDEX")
                     self.parse_create_index(unique=True)
+                elif self.accept_keyword("VIEW"):
+                    self.parse_create_view()
+                elif self.accept_keyword("MATERIALIZED"):
+                    self.expect_keyword("VIEW")
+                    self.parse_create_view()
 
             elif self.accept_keyword("PRAGMA"):
                 self.parse_pragma()
@@ -490,6 +495,11 @@ class Parser:
             postgresql_where=where,
         )
         table.append_constraint(index)
+
+    def parse_create_view(self) -> None:
+        schema, name = self.parse_identifier()
+        table = Table(name, self.metadata, schema=schema, info=self.table_info)
+        self.export(schema, name, table)
 
     def parse_identifier(self) -> tuple[str | None, str]:
         name1 = self.expect_name()
