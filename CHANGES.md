@@ -1,5 +1,9 @@
 ## Version 2
 
+### v2.2 (2022-04-13)
+- Remove pragma `table_info()`.
+- Use pattern matching for importer.
+
 ### v2.1 (2022-04-12)
 - Upgrade to Python 3.10.
 - Add `pgcopy` utility.
