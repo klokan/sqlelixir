@@ -1,5 +1,9 @@
 ## Version 2
 
+### v2.3 (2022-04-19)
+- Add `inet` Postgres type.
+- Import enum classes directly from schema.
+
 ### v2.2 (2022-04-13)
 - Remove pragma `table_info()`.
 - Use pattern matching for importer.
