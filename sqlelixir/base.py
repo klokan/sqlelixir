@@ -1,15 +1,14 @@
-import enum
 import sys
 
 from io import TextIOBase
-from typing import Any, Type
+from typing import Any
 
 from sqlalchemy.schema import MetaData
-from sqlalchemy.types import Enum, TypeEngine
+from sqlalchemy.types import TypeEngine
 
 from sqlelixir.importer import Importer
 from sqlelixir.parser import Parser
-from sqlelixir.types import TypeRegistry, python_enum_values
+from sqlelixir.types import TypeRegistry
 
 
 postgres_naming_convention = {
@@ -28,13 +27,6 @@ class SQLElixir:
         self.types = TypeRegistry()
         self.metadata = metadata
         self.parser = Parser(self.types, self.metadata)
-
-    def register_enum(
-        self, schema: str | None, name: str, enum: Type[enum.Enum], **kwargs
-    ):
-        kwargs.setdefault("values_callable", python_enum_values)
-        type_ = Enum(enum, schema=schema, name=name, **kwargs)
-        self.types.add(schema, name, type_)
 
     def register_type(self, schema: str | None, name: str, type_: TypeEngine):
         self.types.add(schema, name, type_)

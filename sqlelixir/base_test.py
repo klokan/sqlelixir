@@ -58,10 +58,9 @@ def test_create_schema_twice(elixir: SQLElixir, module: SimpleNamespace):
 
 
 def test_create_enum_registered(elixir: SQLElixir, module: SimpleNamespace):
-    elixir.register_enum(None, "widget_types", WidgetType)
-
     sql = """
-    CREATE TYPE widget_types AS ENUM ('basic', 'custom');
+    CREATE TYPE widget_types AS ENUM ('basic', 'custom')
+         PRAGMA (CLASS 'sqlelixir.base_test.WidgetType');
     """
 
     elixir.parse(sql, module)
@@ -153,10 +152,9 @@ def test_create_table_column_types_case(elixir: SQLElixir, module: SimpleNamespa
 
 
 def test_create_table_defaults(elixir: SQLElixir, module: SimpleNamespace):
-    elixir.register_enum(None, "widget_types", WidgetType)
-
     sql = """
-    CREATE TYPE widget_types AS ENUM ('basic', 'custom');
+    CREATE TYPE widget_types AS ENUM ('basic', 'custom')
+         PRAGMA (CLASS 'sqlelixir.base_test.WidgetType');
     CREATE TYPE widget_sizes AS ENUM ('small', 'large');
     CREATE TABLE test (
         default_true boolean DEFAULT TRUE,

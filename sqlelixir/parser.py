@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Iterator
+from importlib import import_module
 from io import TextIOBase
 from typing import Any
 
@@ -31,7 +32,7 @@ from sqlparse.lexer import tokenize
 from sqlparse.sql import Token
 from sqlparse.tokens import Comment, Name, Number, Operator, Punctuation, String
 
-from sqlelixir.types import TypeRegistry
+from sqlelixir.types import TypeRegistry, python_enum_values
 
 
 class Parser:
@@ -114,10 +115,38 @@ class Parser:
 
             self.expect_punctuation(")")
 
-            # Clients can register enum types in advance.
+            # Clients can register types.
             type_ = self.types.get(schema, name)
             if type_ is None:
-                type_ = Enum(*values, schema=schema, name=name)
+                if self.accept_keyword("PRAGMA"):
+                    self.expect_punctuation("(")
+                    self.expect_keyword("CLASS")
+                    full_name = self.expect_string()
+                    self.expect_punctuation(")")
+
+                    module_name, separator, class_name = full_name.rpartition(".")
+                    assert module_name
+                    assert separator == "."
+                    assert class_name
+
+                    module = import_module(module_name)
+                    class_ = getattr(module, class_name)
+
+                    type_ = Enum(
+                        class_,
+                        metadata=self.metadata,
+                        schema=schema,
+                        name=name,
+                        values_callable=python_enum_values,
+                    )
+                else:
+                    type_ = Enum(
+                        *values,
+                        metadata=self.metadata,
+                        schema=schema,
+                        name=name,
+                    )
+
                 self.types.add(schema, name, type_)
 
             self.export(schema, name, type_)
