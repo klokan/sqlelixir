@@ -52,6 +52,7 @@ builtin_types = {
     "timestamptz": standard.DateTime(timezone=True),
     "bytea": postgres.BYTEA,
     "daterange": postgres.DATERANGE,
+    "inet": postgres.INET,
     "int4range": postgres.INT4RANGE,
     "int8range": postgres.INT8RANGE,
     "json": postgres.JSON(none_as_null=True),
