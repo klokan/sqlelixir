@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.4 (2022-05-10)
+- Add query capability to `pgcopy.copy_to()`.
+
 ### v2.3 (2022-04-19)
 - Add `inet` Postgres type.
 - Import enum classes directly from schema.
