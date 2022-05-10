@@ -5,26 +5,15 @@ from typing import BinaryIO, TextIO, cast
 import psycopg2.extensions
 from sqlalchemy import Table
 from sqlalchemy.engine import Connection
+from sqlalchemy.sql.expression import Select
 from sqlalchemy.sql.schema import Column
+from sqlalchemy.dialects import postgresql
 
 NULL = r"\N"
 
 
 def copy_from(connection: Connection, file: BinaryIO | TextIO, columns: list[Column]):
     """Copy data in text format from file to table."""
-    target = format_reference(columns)
-    with make_cursor(connection) as cursor:
-        cursor.copy_expert(f"COPY {target} FROM STDIN", file)
-
-
-def copy_to(connection: Connection, file: BinaryIO | TextIO, columns: list[Column]):
-    """Copy data in text format from table to file."""
-    source = format_reference(columns)
-    with make_cursor(connection) as cursor:
-        cursor.copy_expert(f"COPY {source} TO STDOUT", file)
-
-
-def format_reference(columns: list[Column]) -> str:
     if not columns:
         raise RuntimeError("Missing columns")
 
@@ -40,7 +29,18 @@ def format_reference(columns: list[Column]) -> str:
         table_name = table.name
 
     column_names = ", ".join(column.name for column in columns)
-    return f"{table_name} ({column_names})"
+    target = f"{table_name} ({column_names})"
+
+    with make_cursor(connection) as cursor:
+        cursor.copy_expert(f"COPY {target} FROM STDIN", file)
+
+
+def copy_to(connection: Connection, file: BinaryIO | TextIO, query: Select):
+    """Copy data in text format from table to file."""
+    with make_cursor(connection) as cursor:
+        compiled = query.compile(dialect=postgresql.dialect())
+        source = cursor.mogrify(compiled.string, compiled.params).decode()
+        cursor.copy_expert(f"COPY ({source}) TO STDOUT", file)
 
 
 def make_cursor(connection: Connection) -> psycopg2.extensions.cursor:
