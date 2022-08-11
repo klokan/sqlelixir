@@ -1,5 +1,9 @@
 ## Version 2
 
+### v2.5 (2022-08-11)
+- Load enum values from Python.
+- Add non-native enums.
+
 ### v2.4 (2022-05-10)
 - Add query capability to `pgcopy.copy_to()`.
 
