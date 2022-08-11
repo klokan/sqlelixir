@@ -102,49 +102,72 @@ class Parser:
 
         if self.accept_keyword("ENUM"):
             values = []
-            self.expect_punctuation("(")
+            class_ = None
+            native = True
 
-            while True:
-                value = self.expect_string()
-                values.append(value)
+            if self.accept_punctuation("("):
+                while True:
+                    value = self.expect_string()
+                    values.append(value)
 
-                if self.accept_punctuation(","):
-                    continue
-                else:
-                    break
+                    if self.accept_punctuation(","):
+                        continue
+                    else:
+                        break
 
-            self.expect_punctuation(")")
+                self.expect_punctuation(")")
+
+            if self.accept_keyword("PRAGMA"):
+                self.expect_punctuation("(")
+
+                while True:
+                    if self.accept_keyword("CLASS"):
+                        full_name = self.expect_string()
+                        module_name, separator, class_name = full_name.rpartition(".")
+                        assert module_name
+                        assert separator == "."
+                        assert class_name
+                        module = import_module(module_name)
+                        class_ = getattr(module, class_name)
+                    elif self.accept_keyword("NATIVE"):
+                        if self.accept_keyword("TRUE"):
+                            native = True
+                        elif self.accept_keyword("FALSE"):
+                            native = False
+                        else:
+                            raise RuntimeError("Invalid enum native value")
+                    else:
+                        raise RuntimeError("Invalid enum pragma")
+
+                    if self.accept_punctuation(","):
+                        continue
+                    else:
+                        break
+
+                self.expect_punctuation(")")
 
             # Clients can register types.
             type_ = self.types.get(schema, name)
             if type_ is None:
-                if self.accept_keyword("PRAGMA"):
-                    self.expect_punctuation("(")
-                    self.expect_keyword("CLASS")
-                    full_name = self.expect_string()
-                    self.expect_punctuation(")")
-
-                    module_name, separator, class_name = full_name.rpartition(".")
-                    assert module_name
-                    assert separator == "."
-                    assert class_name
-
-                    module = import_module(module_name)
-                    class_ = getattr(module, class_name)
-
+                if class_ is not None:
                     type_ = Enum(
                         class_,
                         metadata=self.metadata,
                         schema=schema,
                         name=name,
+                        native_enum=native,
                         values_callable=python_enum_values,
                     )
                 else:
+                    if not values:
+                        raise RuntimeError("Enum values not specified", schema, name)
+
                     type_ = Enum(
                         *values,
                         metadata=self.metadata,
                         schema=schema,
                         name=name,
+                        native_enum=native,
                     )
 
                 self.types.add(schema, name, type_)

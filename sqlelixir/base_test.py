@@ -57,10 +57,10 @@ def test_create_schema_twice(elixir: SQLElixir, module: SimpleNamespace):
         elixir.parse(sql, module)
 
 
-def test_create_enum_registered(elixir: SQLElixir, module: SimpleNamespace):
+def test_create_enum_python(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
-    CREATE TYPE widget_types AS ENUM ('basic', 'custom')
-         PRAGMA (CLASS 'sqlelixir.base_test.WidgetType');
+    CREATE TYPE widget_types AS ENUM
+    PRAGMA (CLASS 'sqlelixir.base_test.WidgetType');
     """
 
     elixir.parse(sql, module)
@@ -69,9 +69,25 @@ def test_create_enum_registered(elixir: SQLElixir, module: SimpleNamespace):
     assert module.widget_types.name == "widget_types"
     assert module.widget_types.enums == ["basic", "custom"]
     assert module.widget_types.python_type is WidgetType
+    assert module.widget_types.native is True
 
 
-def test_create_enum_unregistered(elixir: SQLElixir, module: SimpleNamespace):
+def test_create_enum_python_non_native(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE TYPE widget_types AS ENUM
+    PRAGMA (CLASS 'sqlelixir.base_test.WidgetType', NATIVE FALSE);
+    """
+
+    elixir.parse(sql, module)
+
+    assert isinstance(module.widget_types, Enum)
+    assert module.widget_types.name == "widget_types"
+    assert module.widget_types.enums == ["basic", "custom"]
+    assert module.widget_types.python_type is WidgetType
+    assert module.widget_types.native is False
+
+
+def test_create_enum_string(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     CREATE TYPE widget_types AS ENUM ('basic', 'custom');
     """
@@ -82,6 +98,7 @@ def test_create_enum_unregistered(elixir: SQLElixir, module: SimpleNamespace):
     assert module.widget_types.name == "widget_types"
     assert module.widget_types.enums == ["basic", "custom"]
     assert module.widget_types.python_type is str
+    assert module.widget_types.native is True
 
 
 def test_create_table_column_names(elixir: SQLElixir, module: SimpleNamespace):
