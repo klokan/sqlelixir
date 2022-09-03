@@ -8,7 +8,21 @@ import sqlalchemy.dialects.postgresql as postgres
 import sqlalchemy.sql.sqltypes as standard
 
 from sqlalchemy.sql.type_api import TypeEngine
-from sqlalchemy.types import UserDefinedType
+from sqlalchemy.types import UserDefinedType, TypeDecorator
+
+
+def custom_enum_type(enum_type, data_type):
+    class CustomEnumType(TypeDecorator):
+        cache_ok = True
+        impl = data_type
+
+        def process_bind_param(self, value, dialect):
+            return value.value
+
+        def process_result_value(self, value, dialect):
+            return enum_type(value)
+
+    return CustomEnumType
 
 
 class XMLType(UserDefinedType):

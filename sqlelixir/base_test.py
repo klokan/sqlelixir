@@ -15,7 +15,7 @@ from sqlalchemy.schema import (
     PrimaryKeyConstraint,
     UniqueConstraint,
 )
-from sqlalchemy.types import Boolean, Enum, Float, Integer, Text
+from sqlalchemy.types import Boolean, Enum, Float, Integer, Text, TypeDecorator
 
 from sqlelixir import SQLElixir
 
@@ -23,6 +23,11 @@ from sqlelixir import SQLElixir
 class WidgetType(enum.Enum):
     BASIC = "basic"
     CUSTOM = "custom"
+
+
+class NumberType(enum.Enum):
+    ONE = 1
+    TWO = 2
 
 
 @pytest.fixture
@@ -75,7 +80,7 @@ def test_create_enum_python(elixir: SQLElixir, module: SimpleNamespace):
 def test_create_enum_python_non_native(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     CREATE TYPE widget_types AS ENUM
-    PRAGMA (CLASS 'sqlelixir.base_test.WidgetType', NATIVE FALSE);
+    PRAGMA (CLASS 'sqlelixir.base_test.WidgetType', DATA TYPE text);
     """
 
     elixir.parse(sql, module)
@@ -99,6 +104,18 @@ def test_create_enum_string(elixir: SQLElixir, module: SimpleNamespace):
     assert module.widget_types.enums == ["basic", "custom"]
     assert module.widget_types.python_type is str
     assert module.widget_types.native is True
+
+
+def test_create_enum_int(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE TYPE numbers AS ENUM
+    PRAGMA (CLASS 'sqlelixir.base_test.NumberType', DATA TYPE int);
+    """
+
+    elixir.parse(sql, module)
+
+    assert issubclass(module.numbers, TypeDecorator)
+    assert module.numbers.impl is Integer
 
 
 def test_create_table_column_names(elixir: SQLElixir, module: SimpleNamespace):

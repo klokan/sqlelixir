@@ -25,14 +25,14 @@ from sqlalchemy.schema import MetaData
 from sqlalchemy.sql import text as text_expression
 from sqlalchemy.sql.expression import TextClause
 from sqlalchemy.sql.type_api import TypeEngine
-from sqlalchemy.types import Enum
+from sqlalchemy.types import Enum, Text
 
 from sqlparse.engine import StatementSplitter
 from sqlparse.lexer import tokenize
 from sqlparse.sql import Token
 from sqlparse.tokens import Comment, Name, Number, Operator, Punctuation, String
 
-from sqlelixir.types import TypeRegistry, python_enum_values
+from sqlelixir.types import TypeRegistry, custom_enum_type, python_enum_values
 
 
 class Parser:
@@ -102,8 +102,8 @@ class Parser:
 
         if self.accept_keyword("ENUM"):
             values = []
-            class_ = None
-            native = True
+            enum_type = None
+            data_type = None
 
             if self.accept_punctuation("("):
                 while True:
@@ -128,14 +128,13 @@ class Parser:
                         assert separator == "."
                         assert class_name
                         module = import_module(module_name)
-                        class_ = getattr(module, class_name)
-                    elif self.accept_keyword("NATIVE"):
-                        if self.accept_keyword("TRUE"):
-                            native = True
-                        elif self.accept_keyword("FALSE"):
-                            native = False
-                        else:
-                            raise RuntimeError("Invalid enum native value")
+                        enum_type = getattr(module, class_name)
+                    elif self.accept_keyword("DATA"):
+                        self.expect_keyword("TYPE")
+                        type_name = self.expect_name()
+                        data_type = self.types.get(None, type_name)
+                        if data_type is None:
+                            raise RuntimeError("Unknown type", type_name)
                     else:
                         raise RuntimeError("Invalid enum pragma")
 
@@ -149,26 +148,51 @@ class Parser:
             # Clients can register types.
             type_ = self.types.get(schema, name)
             if type_ is None:
-                if class_ is not None:
-                    type_ = Enum(
-                        class_,
-                        metadata=self.metadata,
-                        schema=schema,
-                        name=name,
-                        native_enum=native,
-                        values_callable=python_enum_values,
-                    )
+                if enum_type is not None:
+                    if data_type is None:
+                        type_ = Enum(
+                            enum_type,
+                            metadata=self.metadata,
+                            schema=schema,
+                            name=name,
+                            native_enum=True,
+                            values_callable=python_enum_values,
+                        )
+                    elif data_type is Text:
+                        type_ = Enum(
+                            enum_type,
+                            metadata=self.metadata,
+                            schema=schema,
+                            name=name,
+                            native_enum=False,
+                            values_callable=python_enum_values,
+                        )
+                    else:
+                        if values:
+                            raise RuntimeError("Enum values not allowed", schema, name)
+                        type_ = custom_enum_type(enum_type, data_type)
                 else:
                     if not values:
                         raise RuntimeError("Enum values not specified", schema, name)
 
-                    type_ = Enum(
-                        *values,
-                        metadata=self.metadata,
-                        schema=schema,
-                        name=name,
-                        native_enum=native,
-                    )
+                    if data_type is None:
+                        type_ = Enum(
+                            *values,
+                            metadata=self.metadata,
+                            schema=schema,
+                            name=name,
+                            native_enum=True,
+                        )
+                    elif data_type is Text:
+                        type_ = Enum(
+                            *values,
+                            metadata=self.metadata,
+                            schema=schema,
+                            name=name,
+                            native_enum=False,
+                        )
+                    else:
+                        raise RuntimeError("Invalid enum data type", data_type)
 
                 self.types.add(schema, name, type_)
 
