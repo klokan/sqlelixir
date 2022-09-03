@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.6 (2022-09-03)
+- Add custom enums.
+
 ### v2.5 (2022-08-11)
 - Load enum values from Python.
 - Add non-native enums.
