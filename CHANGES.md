@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.7 (2022-09-05)
+- Fix custom enum NULL handling.
+
 ### v2.6 (2022-09-03)
 - Add custom enums.
 

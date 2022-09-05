@@ -17,10 +17,16 @@ def custom_enum_type(enum_type, data_type):
         impl = data_type
 
         def process_bind_param(self, value, dialect):
-            return value.value
+            if value is not None:
+                return value.value
+            else:
+                return None
 
         def process_result_value(self, value, dialect):
-            return enum_type(value)
+            if value is not None:
+                return enum_type(value)
+            else:
+                return None
 
     return CustomEnumType
 
