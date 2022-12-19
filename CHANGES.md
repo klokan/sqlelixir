@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.8 (2022-12-19)
+- Add `smallint` type.
+
 ### v2.7 (2022-09-05)
 - Fix custom enum NULL handling.
 

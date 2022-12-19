@@ -66,6 +66,7 @@ builtin_types = {
     "integer": standard.Integer,
     "interval": standard.Interval,
     "serial": standard.Integer,
+    "smallint": standard.SmallInteger,
     "text": standard.Text,
     "time": standard.Time,
     "timestamp": standard.DateTime,
