@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.9 (2023-01-05)
+- Parse view columns.
+
 ### v2.8 (2022-12-19)
 - Add `smallint` type.
 

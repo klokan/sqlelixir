@@ -3,8 +3,8 @@ import sys
 from io import TextIOBase
 from typing import Any
 
-from sqlalchemy.schema import MetaData
-from sqlalchemy.types import TypeEngine
+from sqlalchemy.schema import MetaData, Table
+from sqlalchemy.types import TypeEngine, NullType
 
 from sqlelixir.importer import Importer
 from sqlelixir.parser import Parser
@@ -40,3 +40,29 @@ class SQLElixir:
 
     def parse(self, sql: str | TextIOBase, module: Any):
         self.parser.parse(sql, module)
+
+
+def real_tables(metadata: MetaData) -> list[Table]:
+    """Find all real tables in metadata, ignoring views.
+
+    This is useful when creating a schema that contains views.
+    SQAlchemy can't really represent them, so this function can
+    be used to filter them out.
+
+    >> metadata.create_all(bind, tables=sqlelixir.real_tables(metadata))
+    """
+
+    tables = []
+    for table in metadata.tables.values():
+        # Views without columns are represented as bare tables.
+        if not table.columns:
+            continue
+
+        # Views with columns don't specify their types,
+        # and SQLAlchemy fills in the NULL type.
+        if any(isinstance(column.type, NullType) for column in table.columns):
+            continue
+
+        tables.append(table)
+
+    return tables

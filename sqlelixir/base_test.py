@@ -15,7 +15,15 @@ from sqlalchemy.schema import (
     PrimaryKeyConstraint,
     UniqueConstraint,
 )
-from sqlalchemy.types import Boolean, Enum, Float, Integer, Text, TypeDecorator
+from sqlalchemy.types import (
+    Boolean,
+    Enum,
+    Float,
+    Integer,
+    Text,
+    TypeDecorator,
+    NullType,
+)
 
 from sqlelixir import SQLElixir
 
@@ -638,7 +646,7 @@ def test_create_index(elixir: SQLElixir, module: SimpleNamespace):
         raise AssertionError("Index not found")
 
 
-def test_create_view(elixir: SQLElixir, module: SimpleNamespace):
+def test_create_view_without_columns(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     CREATE VIEW test AS
     SELECT * FROM widgets;
@@ -649,6 +657,20 @@ def test_create_view(elixir: SQLElixir, module: SimpleNamespace):
     table = module.test
     assert isinstance(table, Table)
     assert not table.columns
+
+
+def test_create_view_with_columns(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE VIEW test (widget_id, created) AS
+    SELECT * FROM widgets;
+    """
+
+    elixir.parse(sql, module)
+
+    table = module.test
+    assert isinstance(table, Table)
+    assert isinstance(table.c.widget_id.type, NullType)
+    assert isinstance(table.c.created.type, NullType)
 
 
 def test_create_materialized_view(elixir: SQLElixir, module: SimpleNamespace):

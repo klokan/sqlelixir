@@ -1,2 +1,2 @@
 # flake8:noqa
-from sqlelixir.base import SQLElixir
+from sqlelixir.base import SQLElixir, real_tables

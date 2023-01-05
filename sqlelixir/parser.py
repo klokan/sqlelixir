@@ -570,6 +570,19 @@ class Parser:
     def parse_create_view(self) -> None:
         schema, name = self.parse_identifier()
         table = Table(name, self.metadata, schema=schema)
+
+        if self.accept_punctuation("("):
+            while True:
+                column_name = self.expect_name()
+                table.append_column(Column(column_name))
+
+                if self.accept_punctuation(","):
+                    continue
+                else:
+                    break
+
+            self.expect_punctuation(")")
+
         self.export(schema, name, table)
 
     def parse_identifier(self) -> tuple[str | None, str]:
