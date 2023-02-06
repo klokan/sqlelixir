@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.10 (2023-02-06)
+- Add `pgcopy.dump()` and `pgcopy.load()`.
+
 ### v2.9 (2023-01-05)
 - Parse view columns.
 

@@ -1,7 +1,7 @@
 FROM python:3.10
 
 RUN python -m venv /usr/local/lib/poetry \
-    && /usr/local/lib/poetry/bin/pip install poetry==1.1.13 \
+    && /usr/local/lib/poetry/bin/pip install poetry==1.3.2 \
     && ln -s /usr/local/lib/poetry/bin/poetry /usr/local/bin/poetry
 
 RUN groupadd --gid 1000 debian \
@@ -14,4 +14,4 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV VIRTUAL_ENV=/opt/venv
 
 COPY --chown=debian:debian pyproject.toml poetry.lock /opt/
-RUN cd /opt && poetry install
+RUN cd /opt && poetry install --all-extras
