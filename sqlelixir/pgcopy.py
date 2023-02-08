@@ -50,6 +50,9 @@ unstructure_iso8601 = methodcaller("isoformat")
 def configure_converter(converter: cattrs.Converter):
     """Configure cattrs converter for use with load() and dump()."""
 
+    if converter.unstruct_strat is not cattrs.UnstructureStrategy.AS_TUPLE:
+        raise RuntimeError("Converter must use tuple strategy")
+
     converter.register_structure_hook(bool, lambda v, _: v == "t")
     converter.register_structure_hook(int, lambda v, _: int(v))
     converter.register_structure_hook(float, lambda v, _: float(v))
@@ -68,6 +71,7 @@ def configure_converter(converter: cattrs.Converter):
 
 def make_converter(**kwargs) -> cattrs.Converter:
     """Create cattrs converter and configure it for use with load() and dump()."""
+    kwargs.setdefault("unstruct_strat", cattrs.UnstructureStrategy.AS_TUPLE)
     converter = cattrs.Converter(**kwargs)
     configure_converter(converter)
     return converter
@@ -84,7 +88,7 @@ def dump(
 ):
     """Encode objects into COPY input file."""
 
-    unstructure = converter.unstructure_attrs_astuple
+    unstructure = converter.unstructure
 
     for obj in objs:
         file.write("\t".join(map(ifnull, unstructure(obj))))
@@ -96,7 +100,7 @@ def load(
 ) -> Iterator[T]:
     """Decode objects of a given type from COPY output file."""
 
-    structure = converter.structure_attrs_fromtuple
+    structure = converter.structure
 
     for line in file:
         yield structure(map(nullif, line.rstrip("\n").split("\t")), as_type)
