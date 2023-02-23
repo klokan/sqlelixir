@@ -19,7 +19,7 @@ import psycopg2.extensions
 import cattrs
 from sqlalchemy import Table
 from sqlalchemy.engine import Connection
-from sqlalchemy.sql.expression import Select
+from sqlalchemy.sql.expression import Selectable
 from sqlalchemy.sql.schema import Column
 from sqlalchemy.dialects import postgresql
 
@@ -129,10 +129,10 @@ def copy_from(connection: Connection, file: BinaryIO | TextIO, columns: list[Col
         cursor.copy_expert(f"COPY {target} FROM STDIN", file)
 
 
-def copy_to(connection: Connection, file: BinaryIO | TextIO, query: Select):
+def copy_to(connection: Connection, file: BinaryIO | TextIO, statement: Selectable):
     """Copy data in text format from table to file."""
     with make_cursor(connection) as cursor:
-        compiled = query.compile(dialect=postgresql.dialect())
+        compiled = statement.compile(dialect=postgresql.dialect())
         source = cursor.mogrify(compiled.string, compiled.params).decode()
         cursor.copy_expert(f"COPY ({source}) TO STDOUT", file)
 

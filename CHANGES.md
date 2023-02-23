@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.11 (2023-02-23)
+- Expand type annotation for `pgcopy.copy_to()` to allow DML statements.
+
 ### v2.10 (2023-02-06)
 - Add `pgcopy.dump()` and `pgcopy.load()`.
 
