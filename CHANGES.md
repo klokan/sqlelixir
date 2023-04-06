@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.12 (2023-04-06)
+- Add optional mapping attribute to custom enum.
+
 ### v2.11 (2023-02-23)
 - Expand type annotation for `pgcopy.copy_to()` to allow DML statements.
 

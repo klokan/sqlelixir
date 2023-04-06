@@ -38,6 +38,19 @@ class NumberType(enum.Enum):
     TWO = 2
 
 
+class Product(enum.Enum):
+    product_id: int
+
+    PRODUCT_1 = (1, "Product-1")
+    PRODUCT_2 = (2, "Product-2")
+
+    def __new__(cls, product_id: int, product_code: str):
+        obj = object.__new__(cls)
+        obj.product_id = product_id
+        obj._value_ = product_code
+        return obj
+
+
 @pytest.fixture
 def elixir() -> SQLElixir:
     return SQLElixir()
@@ -114,7 +127,7 @@ def test_create_enum_string(elixir: SQLElixir, module: SimpleNamespace):
     assert module.widget_types.native is True
 
 
-def test_create_enum_int(elixir: SQLElixir, module: SimpleNamespace):
+def test_create_enum_python_int(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     CREATE TYPE numbers AS ENUM
     PRAGMA (CLASS 'sqlelixir.base_test.NumberType', DATA TYPE int);
@@ -124,6 +137,26 @@ def test_create_enum_int(elixir: SQLElixir, module: SimpleNamespace):
 
     assert issubclass(module.numbers, TypeDecorator)
     assert module.numbers.impl is Integer
+
+    tp = module.numbers()
+    assert tp.process_bind_param(NumberType.ONE, None) == 1
+    assert tp.process_result_value(2, None) is NumberType.TWO
+
+
+def test_create_enum_python_custom(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE TYPE product AS ENUM
+    PRAGMA (CLASS 'sqlelixir.base_test.Product', DATA TYPE int, ATTRIBUTE 'product_id');
+    """
+
+    elixir.parse(sql, module)
+
+    assert issubclass(module.product, TypeDecorator)
+    assert module.product.impl is Integer
+
+    tp = module.product()
+    assert tp.process_bind_param(Product.PRODUCT_1, None) == 1
+    assert tp.process_result_value(2, None) is Product.PRODUCT_2
 
 
 def test_create_table_column_names(elixir: SQLElixir, module: SimpleNamespace):

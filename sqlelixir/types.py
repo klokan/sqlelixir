@@ -1,4 +1,5 @@
 from collections import defaultdict
+from operator import attrgetter
 from typing import Type
 from xml.etree import ElementTree
 
@@ -11,20 +12,28 @@ from sqlalchemy.sql.type_api import TypeEngine
 from sqlalchemy.types import UserDefinedType, TypeDecorator
 
 
-def custom_enum_type(enum_type, data_type):
+def custom_enum_type(enum_type, data_type, attribute):
+    if attribute is None:
+        output_func = attrgetter("value")
+        input_func = enum_type
+    else:
+        output_func = attrgetter(attribute)
+        mapping = {output_func(member): member for member in enum_type}
+        input_func = mapping.__getitem__
+
     class CustomEnumType(TypeDecorator):
         cache_ok = True
         impl = data_type
 
         def process_bind_param(self, value, dialect):
             if value is not None:
-                return value.value
+                return output_func(value)
             else:
                 return None
 
         def process_result_value(self, value, dialect):
             if value is not None:
-                return enum_type(value)
+                return input_func(value)
             else:
                 return None
 

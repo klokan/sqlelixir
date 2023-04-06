@@ -2,6 +2,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from importlib import import_module
 from io import TextIOBase
+from operator import attrgetter
 from typing import Any
 
 import enum
@@ -104,6 +105,7 @@ class Parser:
             values = []
             enum_type = None
             data_type = None
+            attribute = None
 
             if self.accept_punctuation("("):
                 while True:
@@ -135,6 +137,8 @@ class Parser:
                         data_type = self.types.get(None, type_name)
                         if data_type is None:
                             raise RuntimeError("Unknown type", type_name)
+                    elif self.accept_keyword("ATTRIBUTE"):
+                        attribute = self.expect_string()
                     else:
                         raise RuntimeError("Invalid enum pragma")
 
@@ -149,7 +153,7 @@ class Parser:
             type_ = self.types.get(schema, name)
             if type_ is None:
                 if enum_type is not None:
-                    if data_type is None:
+                    if data_type is None and attribute is None:
                         type_ = Enum(
                             enum_type,
                             metadata=self.metadata,
@@ -158,7 +162,7 @@ class Parser:
                             native_enum=True,
                             values_callable=python_enum_values,
                         )
-                    elif data_type is Text:
+                    elif data_type is Text and attribute is None:
                         type_ = Enum(
                             enum_type,
                             metadata=self.metadata,
@@ -170,10 +174,13 @@ class Parser:
                     else:
                         if values:
                             raise RuntimeError("Enum values not allowed", schema, name)
-                        type_ = custom_enum_type(enum_type, data_type)
+
+                        type_ = custom_enum_type(enum_type, data_type, attribute)
                 else:
                     if not values:
                         raise RuntimeError("Enum values not specified", schema, name)
+                    if attribute is not None:
+                        raise RuntimeError("Enum attribute not allowed")
 
                     if data_type is None:
                         type_ = Enum(
