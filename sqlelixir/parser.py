@@ -174,6 +174,8 @@ class Parser:
                     else:
                         if values:
                             raise RuntimeError("Enum values not allowed", schema, name)
+                        if data_type is None:
+                            raise RuntimeError("Enum data type required")
 
                         type_ = custom_enum_type(enum_type, data_type, attribute)
                 else:
