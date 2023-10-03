@@ -89,7 +89,10 @@ class Parser:
                     self.parse_create_index(unique=True)
                 elif self.accept_keyword("VIEW"):
                     self.parse_create_view()
-                elif self.accept_keyword("MATERIALIZED"):
+                elif (
+                    self.accept_keyword("MATERIALIZED")
+                    or self.accept_keyword("RECURSIVE")
+                ):
                     self.expect_keyword("VIEW")
                     self.parse_create_view()
 

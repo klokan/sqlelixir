@@ -719,6 +719,20 @@ def test_create_materialized_view(elixir: SQLElixir, module: SimpleNamespace):
     assert not table.columns
 
 
+def test_create_recursive_view(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE RECURSIVE VIEW test (widget_id, created) AS
+    SELECT * FROM widgets;
+    """
+
+    elixir.parse(sql, module)
+
+    table = module.test
+    assert isinstance(table, Table)
+    assert table.c.widget_id is not None
+    assert table.c.created is not None
+
+
 def test_prepare(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     PREPARE widget_count AS SELECT count(*) FROM widgets WHERE deleted IS NULL;
