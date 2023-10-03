@@ -2,7 +2,6 @@ from __future__ import annotations
 from collections.abc import Iterator
 from importlib import import_module
 from io import TextIOBase
-from operator import attrgetter
 from typing import Any
 
 import enum
