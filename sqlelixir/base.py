@@ -1,13 +1,16 @@
 import sys
 
 from io import TextIOBase
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy.schema import MetaData, Table
-from sqlalchemy.types import TypeEngine, NullType
+from sqlalchemy.sql.expression import TextClause
+from sqlalchemy.sql.functions import _FunctionGenerator
+from sqlalchemy.types import TypeEngine, NullType, Enum
 
 from sqlelixir.importer import Importer
-from sqlelixir.parser import Parser
+from sqlelixir.parser import Parser, Procedure
 from sqlelixir.types import TypeRegistry
 
 
@@ -66,3 +69,47 @@ def real_tables(metadata: MetaData) -> list[Table]:
         tables.append(table)
 
     return tables
+
+
+def generate_type_stubs():
+    """Generate type stubs for all modules imported by SQLElixir."""
+    object_types = (Enum, Table, _FunctionGenerator, Procedure, TextClause)
+
+    for module in list(sys.modules.values()):
+        spec = getattr(module, "__spec__", None)
+        if spec is None:
+            continue
+        if not isinstance(spec.loader, Importer):
+            continue
+
+        assert spec.origin is not None
+        path = Path(spec.origin).with_suffix(".pyi")
+
+        objects = {
+            name: type(obj)
+            for name, obj in module.__dict__.items()
+            if isinstance(obj, object_types)
+        }
+
+        if not objects:
+            path.unlink(missing_ok=True)
+            continue
+
+        lines = []
+        lines.extend(
+            sorted(
+                f"from {object_type.__module__} import {object_type.__name__}\n"
+                for object_type in set(objects.values())
+            )
+        )
+        lines.append("\n")
+        lines.extend(
+            sorted(
+                f"{name}: {object_type.__name__}\n"
+                for name, object_type in objects.items()
+            )
+        )
+        content = "".join(lines)
+
+        if not path.exists() or path.read_text() != content:
+            path.write_text(content)

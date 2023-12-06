@@ -1,4 +1,5 @@
 import enum
+from pathlib import Path
 
 from types import SimpleNamespace
 
@@ -26,7 +27,7 @@ from sqlalchemy.types import (
     NullType,
 )
 
-from sqlelixir import SQLElixir
+from sqlelixir import SQLElixir, generate_type_stubs
 from sqlelixir.parser import Procedure
 
 
@@ -797,6 +798,17 @@ def test_prepare(elixir: SQLElixir, module: SimpleNamespace):
     assert widget_count.text == "SELECT count(*) FROM widgets WHERE deleted IS NULL"
 
 
+SCHEMA_TEST_TYPE_STUB = """\
+from sqlalchemy.sql.schema import Table
+from sqlalchemy.sql.sqltypes import Enum
+
+accounts: Table
+products: Enum
+subscription_types: Enum
+subscriptions: Table
+"""
+
+
 # Run with pytest -s to see the output.
 def test_importer(elixir: SQLElixir):
     elixir.register_importer("sqlelixir.schema*")
@@ -812,3 +824,9 @@ def test_importer(elixir: SQLElixir):
 
     print("\n=== DROP ALL ===\n")
     elixir.metadata.drop_all(engine)
+
+    generate_type_stubs()
+
+    path = Path("sqlelixir/schema_test.pyi")
+    assert path.read_text() == SCHEMA_TEST_TYPE_STUB
+    path.unlink()
