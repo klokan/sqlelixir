@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.dialects.postgresql import ARRAY, ExcludeConstraint, UUID
 from sqlalchemy.engine import create_mock_engine
 from sqlalchemy.sql.expression import TextClause
+from sqlalchemy.sql.functions import Function
 from sqlalchemy.schema import (
     Constraint,
     Table,
@@ -26,6 +27,7 @@ from sqlalchemy.types import (
 )
 
 from sqlelixir import SQLElixir
+from sqlelixir.parser import Procedure
 
 
 class WidgetType(enum.Enum):
@@ -731,6 +733,56 @@ def test_create_recursive_view(elixir: SQLElixir, module: SimpleNamespace):
     assert isinstance(table, Table)
     assert table.c.widget_id is not None
     assert table.c.created is not None
+
+
+def test_create_function(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE FUNCTION transmogrify() AS $$
+        SELECT * FROM widgets
+    $$ LANGUAGE SQL;
+    """
+
+    elixir.parse(sql, module)
+
+    call = module.transmogrify()
+    assert isinstance(call, Function)
+    assert call.name == "transmogrify"
+
+
+def test_create_procedure_no_parameters(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE PROCEDURE transmogrify() AS $$
+        DELETE * FROM widgets
+    $$ LANGUAGE plpgsql;
+    """
+
+    elixir.parse(sql, module)
+
+    assert isinstance(module.transmogrify, Procedure)
+    call = module.transmogrify()
+    assert isinstance(call, TextClause)
+    assert call.text == "CALL transmogrify()"
+
+
+def test_create_procedure_parameters(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE PROCEDURE transmogrify(v_status text, v_until date) AS $$
+    BEGIN
+        DELETE * 
+          FROM widgets
+         WHERE status = v_status
+           AND changed < v_until
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+
+    elixir.parse(sql, module)
+
+    assert isinstance(module.transmogrify, Procedure)
+    call = module.transmogrify("deleted", "2000-01-01")
+    assert isinstance(call, TextClause)
+    assert call.text == "CALL transmogrify(:arg0, :arg1)"
+    assert call.compile().params == {"arg0": "deleted", "arg1": "2000-01-01"}
 
 
 def test_prepare(elixir: SQLElixir, module: SimpleNamespace):

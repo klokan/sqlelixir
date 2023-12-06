@@ -23,6 +23,7 @@ from sqlalchemy.schema import (
 from sqlalchemy.dialects.postgresql import ARRAY, ExcludeConstraint
 from sqlalchemy.schema import MetaData
 from sqlalchemy.sql import text as text_expression
+from sqlalchemy.sql import func as func_generator
 from sqlalchemy.sql.expression import TextClause
 from sqlalchemy.sql.type_api import TypeEngine
 from sqlalchemy.types import Enum, Text
@@ -30,9 +31,36 @@ from sqlalchemy.types import Enum, Text
 from sqlparse.engine import StatementSplitter
 from sqlparse.lexer import tokenize
 from sqlparse.sql import Token
-from sqlparse.tokens import Comment, Name, Number, Operator, Punctuation, String
+from sqlparse.tokens import (
+    Comment,
+    Name,
+    Number,
+    Operator,
+    Punctuation,
+    String,
+    Literal,
+)
 
 from sqlelixir.types import TypeRegistry, custom_enum_type, python_enum_values
+
+
+class Procedure:
+    name: str
+
+    def __init__(self, schema: str | None, name: str):
+        if schema is not None:
+            self.name = f"{schema}.{name}"
+        else:
+            self.name = name
+
+    def __call__(self, *args):
+        if not args:
+            return text_expression(f"CALL {self.name}()")
+
+        params = ", ".join(f":arg{i}" for i in range(len(args)))
+        clause = text_expression(f"CALL {self.name}({params})").bindparams()
+        kwargs = {f"arg{i}": arg for i, arg in enumerate(args)}
+        return clause.bindparams(**kwargs)
 
 
 class Parser:
@@ -89,12 +117,15 @@ class Parser:
                     self.parse_create_index(unique=True)
                 elif self.accept_keyword("VIEW"):
                     self.parse_create_view()
-                elif (
-                    self.accept_keyword("MATERIALIZED")
-                    or self.accept_keyword("RECURSIVE")
+                elif self.accept_keyword("MATERIALIZED") or self.accept_keyword(
+                    "RECURSIVE"
                 ):
                     self.expect_keyword("VIEW")
                     self.parse_create_view()
+                elif self.accept_keyword("FUNCTION"):
+                    self.parse_function()
+                elif self.accept_keyword("PROCEDURE"):
+                    self.parse_procedure()
 
             elif self.keyword_is_next("PREPARE"):
                 self.parse_prepare()
@@ -698,6 +729,20 @@ class Parser:
 
         return end
 
+    def parse_function(self) -> None:
+        schema, name = self.parse_identifier()
+
+        if schema is not None:
+            clause = getattr(getattr(func_generator, schema), name)
+        else:
+            clause = getattr(func_generator, name)
+
+        self.export(schema, name, clause)
+
+    def parse_procedure(self) -> None:
+        schema, name = self.parse_identifier()
+        self.export(schema, name, Procedure(schema, name))
+
     def parse_prepare(self) -> None:
         self.expect_keyword("PREPARE")
         schema, name = self.parse_identifier()
@@ -764,6 +809,20 @@ class Parser:
         value = self.accept_string()
         if value is None:
             raise RuntimeError("Expected string")
+        return value
+
+    def accept_literal(self) -> str | None:
+        if self.token.ttype is Literal:
+            value = self.token.value.strip("$$").strip()
+            self.advance()
+            return value
+        else:
+            return None
+
+    def expect_literal(self) -> str:
+        value = self.accept_literal()
+        if value is None:
+            raise RuntimeError("Expected literal")
         return value
 
     def number_is_next(self) -> bool:

@@ -1,5 +1,9 @@
 ## Version 2
 
+### v2.14 (2023-12-06)
+- Add support for functions and procedures.
+- Add `generate_type_stubs()`.
+
 ### v2.12 (2023-04-06)
 - Add optional mapping attribute to custom enum.
 
