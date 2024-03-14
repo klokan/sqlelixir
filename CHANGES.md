@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.15 (2024-03-14)
+- Add support for temporary tables.
+
 ### v2.14 (2023-12-06)
 - Add support for functions and procedures.
 - Add `generate_type_stubs()`.
