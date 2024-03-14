@@ -89,10 +89,10 @@ def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool =
     for schema in metadata._schemas - existing_schemas:
         bind.execute(CreateSchema(schema))
 
-    # Create physical tables.
+    # Create tables.
     metadata.create_all(bind, tables=tables, checkfirst=checkfirst)
 
-    # Create views next, since they depend on physical tables.
+    # Create views next, since they depend on tables.
     for name, sql in views.items():
         if name not in existing_views:
             bind.execute(sql)
