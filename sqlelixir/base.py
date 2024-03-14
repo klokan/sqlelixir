@@ -54,7 +54,7 @@ def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool =
     to just tables.
     """
     tables = []
-    views = []
+    views = {}
 
     # Sort metadata items into tables and views.
     # Views are represented as table objects, but need to be created via SQL.
@@ -64,26 +64,38 @@ def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool =
             # Skip materialized views for now. TimescaleDB complains when
             # creating a continuous aggregate view on a regular table.
             if not table.info.get("sqlelixir.materialized", False):
-                views.append(table.info["sqlelixir.DDL"])
+                views[table.schema, table.name] = table.info["sqlelixir.DDL"]
         else:
             # Temporary tables are created by the application as needed.
             if not table.info.get("sqlelixir.temporary", False):
                 tables.append(table)
 
+    # Determine which objects already exist in the database.
+    if checkfirst:
+        existing_schemas = set(
+            bind.execute("SELECT nspname FROM pg_catalog.pg_namespace").scalars()
+        )
+        existing_views = {
+            tuple(row)
+            for row in bind.execute(
+                "SELECT schemaname, viewname FROM pg_catalog.pg_views"
+            )
+        }
+    else:
+        existing_schemas = {}
+        existing_views = {}
+
     # Create necessary schemas first, since `MetaData.create_all()` does not.
-    for schema in metadata._schemas - set(
-        bind.execute("SELECT nspname FROM pg_catalog.pg_namespace").scalars()
-    ):
+    for schema in metadata._schemas - existing_schemas:
         bind.execute(CreateSchema(schema))
 
     # Create physical tables.
     metadata.create_all(bind, tables=tables, checkfirst=checkfirst)
 
     # Create views next, since they depend on physical tables.
-    for sql in views:
-        if checkfirst:
-            sql = sql.replace("VIEW", "VIEW IF NOT EXISTS", 1)
-        bind.execute(sql)
+    for name, sql in views.items():
+        if name not in existing_views:
+            bind.execute(sql)
 
 
 def generate_type_stubs():
