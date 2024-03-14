@@ -4,10 +4,11 @@ from io import TextIOBase
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy.schema import MetaData, Table
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.schema import MetaData, Table, CreateSchema
 from sqlalchemy.sql.expression import TextClause
 from sqlalchemy.sql.functions import _FunctionGenerator
-from sqlalchemy.types import TypeEngine, NullType, Enum
+from sqlalchemy.types import TypeEngine, Enum
 
 from sqlelixir.importer import Importer
 from sqlelixir.parser import Parser, Procedure
@@ -45,30 +46,44 @@ class SQLElixir:
         self.parser.parse(sql, module)
 
 
-def real_tables(metadata: MetaData) -> list[Table]:
-    """Find all real tables in metadata, ignoring views.
+def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool = True):
+    """Create schema from parsed SQLAlchemy metadata.
 
-    This is useful when creating a schema that contains views.
-    SQAlchemy can't really represent them, so this function can
-    be used to filter them out.
-
-    >> metadata.create_all(bind, tables=sqlelixir.real_tables(metadata))
+    Equivalent to `MetaData.create_all()`, but handles other constructs
+    supported by SQLElixir (schemas, views, temporary tables) in addition
+    to just tables.
     """
-
     tables = []
+    views = []
+
+    # Sort metadata items into tables and views.
     for table in metadata.tables.values():
-        # Views without columns are represented as bare tables.
-        if not table.columns:
+        # Views are represented as table objects, but need to be created via SQL.
+        sql = table.info.get("sqlelixir.DDL")
+        if sql is not None:
+            views.append(sql)
             continue
 
-        # Views with columns don't specify their types,
-        # and SQLAlchemy fills in the NULL type.
-        if any(isinstance(column.type, NullType) for column in table.columns):
+        # Temporary tables are created by the application as needed.
+        if table.info.get("sqlelixir.temporary", False):
             continue
 
         tables.append(table)
 
-    return tables
+    # Create necessary schemas first, since `MetaData.create_all()` does not.
+    for schema in metadata._schemas - set(
+        bind.execute("SELECT nspname FROM pg_catalog.pg_namespace").scalars()
+    ):
+        bind.execute(CreateSchema(schema))
+
+    # Create physical tables.
+    metadata.create_all(bind, tables=tables, checkfirst=checkfirst)
+
+    # Create views next, since they depend on physical tables.
+    for sql in views:
+        if checkfirst:
+            sql = sql.replace("VIEW", "VIEW IF NOT EXIST", 1)
+        bind.execute(sql)
 
 
 def generate_type_stubs():

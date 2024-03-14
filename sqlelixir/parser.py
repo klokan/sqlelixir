@@ -120,9 +120,10 @@ class Parser:
                     self.parse_create_index(unique=True)
                 elif self.accept_keyword("VIEW"):
                     self.parse_create_view()
-                elif self.accept_keyword("MATERIALIZED") or self.accept_keyword(
-                    "RECURSIVE"
-                ):
+                elif self.accept_keyword("MATERIALIZED"):
+                    self.expect_keyword("VIEW")
+                    self.parse_create_view()
+                elif self.accept_keyword("RECURSIVE"):
                     self.expect_keyword("VIEW")
                     self.parse_create_view()
                 elif self.accept_keyword("FUNCTION"):
@@ -251,6 +252,7 @@ class Parser:
             self.metadata,
             schema=schema,
             prefixes=["TEMPORARY"] if temporary else None,
+            info={"sqlelixir.temporary": temporary},
         )
         constraints = []
 
@@ -632,6 +634,11 @@ class Parser:
                     break
 
             self.expect_punctuation(")")
+
+        while not self.accept_punctuation(";"):
+            self.advance()
+
+        table.info["sqlelixir.DDL"] = self.format(0, self.index)
 
         self.export(schema, name, table)
 
