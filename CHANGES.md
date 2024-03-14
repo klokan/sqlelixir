@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.16 (2024-03-14)
+- Add `create_all()`.
+
 ### v2.15 (2024-03-14)
 - Add support for temporary tables.
 
@@ -149,4 +152,3 @@
 
 ### v1.0 (2017-10-23)
 Initial release.
-
