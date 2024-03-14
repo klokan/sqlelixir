@@ -82,7 +82,7 @@ def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool =
             )
         }
     else:
-        existing_schemas = {}
+        existing_schemas = {"public"}
         existing_views = {}
 
     # Create necessary schemas first, since `MetaData.create_all()` does not.
