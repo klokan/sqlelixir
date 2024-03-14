@@ -110,6 +110,9 @@ class Parser:
                     self.parse_create_type()
                 elif self.accept_keyword("TABLE"):
                     self.parse_create_table()
+                elif self.accept_keyword("TEMPORARY"):
+                    self.expect_keyword("TABLE")
+                    self.parse_create_table(temporary=True)
                 elif self.accept_keyword("INDEX"):
                     self.parse_create_index(unique=False)
                 elif self.accept_keyword("UNIQUE"):
@@ -240,10 +243,15 @@ class Parser:
 
             self.export(schema, name, type_)
 
-    def parse_create_table(self) -> None:
+    def parse_create_table(self, temporary: bool = False) -> None:
         schema, name = self.parse_identifier()
 
-        table = Table(name, self.metadata, schema=schema)
+        table = Table(
+            name,
+            self.metadata,
+            schema=schema,
+            prefixes=["TEMPORARY"] if temporary else None,
+        )
         constraints = []
 
         self.expect_punctuation("(")
@@ -813,7 +821,7 @@ class Parser:
 
     def accept_literal(self) -> str | None:
         if self.token.ttype is Literal:
-            value = self.token.value.strip("$$").strip()
+            value = self.token.value.removeprefix("$$").removesuffix("$$").strip()
             self.advance()
             return value
         else:

@@ -651,6 +651,21 @@ def test_create_table_check_constraint(
         raise AssertionError("Constraint not found")
 
 
+def test_create_table_temporary(elixir: SQLElixir, module: SimpleNamespace):
+    sql = """
+    CREATE TEMPORARY TABLE test (
+        widget_id int PRIMARY KEY,
+        description text NOT NULL
+    );
+    """
+
+    elixir.parse(sql, module)
+
+    table = module.test
+    assert isinstance(table, Table)
+    assert "TEMPORARY" in table._prefixes
+
+
 def test_create_index(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
     CREATE TABLE test (
@@ -662,7 +677,7 @@ def test_create_index(elixir: SQLElixir, module: SimpleNamespace):
     CREATE UNIQUE INDEX test_account_id_description_fulltext
         ON test USING GIN (account_id, to_tsvector('english', description))
            INCLUDE (widget_id)
-     WHERE (deleted IS NULL)
+     WHERE (deleted IS NULL);
     """
 
     elixir.parse(sql, module)
@@ -769,7 +784,7 @@ def test_create_procedure_parameters(elixir: SQLElixir, module: SimpleNamespace)
     sql = """
     CREATE PROCEDURE transmogrify(v_status text, v_until date) AS $$
     BEGIN
-        DELETE * 
+        DELETE *
           FROM widgets
          WHERE status = v_status
            AND changed < v_until
