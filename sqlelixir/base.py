@@ -82,7 +82,7 @@ def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool =
     # Create views next, since they depend on physical tables.
     for sql in views:
         if checkfirst:
-            sql = sql.replace("VIEW", "VIEW IF NOT EXIST", 1)
+            sql = sql.replace("VIEW", "VIEW IF NOT EXISTS", 1)
         bind.execute(sql)
 
 
