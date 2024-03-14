@@ -664,6 +664,7 @@ def test_create_table_temporary(elixir: SQLElixir, module: SimpleNamespace):
     table = module.test
     assert isinstance(table, Table)
     assert "TEMPORARY" in table._prefixes
+    assert table.info["sqlelixir.type"] == "TABLE"
     assert table.info["sqlelixir.temporary"]
 
 
@@ -709,6 +710,7 @@ def test_create_view_without_columns(elixir: SQLElixir, module: SimpleNamespace)
     table = module.test
     assert isinstance(table, Table)
     assert not table.columns
+    assert table.info["sqlelixir.type"] == "VIEW"
     assert sql.strip() in table.info["sqlelixir.DDL"]
 
 
@@ -724,6 +726,7 @@ def test_create_view_with_columns(elixir: SQLElixir, module: SimpleNamespace):
     assert isinstance(table, Table)
     assert isinstance(table.c.widget_id.type, NullType)
     assert isinstance(table.c.created.type, NullType)
+    assert table.info["sqlelixir.type"] == "VIEW"
     assert sql.strip() in table.info["sqlelixir.DDL"]
 
 
@@ -738,6 +741,7 @@ def test_create_materialized_view(elixir: SQLElixir, module: SimpleNamespace):
     table = module.test
     assert isinstance(table, Table)
     assert not table.columns
+    assert table.info["sqlelixir.type"] == "VIEW"
     assert sql.strip() in table.info["sqlelixir.DDL"]
 
 
@@ -753,6 +757,7 @@ def test_create_recursive_view(elixir: SQLElixir, module: SimpleNamespace):
     assert isinstance(table, Table)
     assert table.c.widget_id is not None
     assert table.c.created is not None
+    assert table.info["sqlelixir.type"] == "VIEW"
     assert sql.strip() in table.info["sqlelixir.DDL"]
 
 

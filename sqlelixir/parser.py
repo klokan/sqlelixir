@@ -122,10 +122,10 @@ class Parser:
                     self.parse_create_view()
                 elif self.accept_keyword("MATERIALIZED"):
                     self.expect_keyword("VIEW")
-                    self.parse_create_view()
+                    self.parse_create_view(materialized=True)
                 elif self.accept_keyword("RECURSIVE"):
                     self.expect_keyword("VIEW")
-                    self.parse_create_view()
+                    self.parse_create_view(recursive=True)
                 elif self.accept_keyword("FUNCTION"):
                     self.parse_function()
                 elif self.accept_keyword("PROCEDURE"):
@@ -252,7 +252,10 @@ class Parser:
             self.metadata,
             schema=schema,
             prefixes=["TEMPORARY"] if temporary else None,
-            info={"sqlelixir.temporary": temporary},
+            info={
+                "sqlelixir.type": "TABLE",
+                "sqlelixir.temporary": temporary,
+            },
         )
         constraints = []
 
@@ -619,9 +622,18 @@ class Parser:
         )
         table.append_constraint(index)
 
-    def parse_create_view(self) -> None:
+    def parse_create_view(self, recursive: bool = False, materialized: bool = False):
         schema, name = self.parse_identifier()
-        table = Table(name, self.metadata, schema=schema)
+        table = Table(
+            name,
+            self.metadata,
+            schema=schema,
+            info={
+                "sqlelixir.type": "VIEW",
+                "sqlelixir.recursive": recursive,
+                "sqlelixir.materialized": materialized,
+            },
+        )
 
         if self.accept_punctuation("("):
             while True:

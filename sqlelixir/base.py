@@ -57,18 +57,18 @@ def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool =
     views = []
 
     # Sort metadata items into tables and views.
+    # Views are represented as table objects, but need to be created via SQL.
     for table in metadata.tables.values():
-        # Views are represented as table objects, but need to be created via SQL.
-        sql = table.info.get("sqlelixir.DDL")
-        if sql is not None:
-            views.append(sql)
-            continue
-
-        # Temporary tables are created by the application as needed.
-        if table.info.get("sqlelixir.temporary", False):
-            continue
-
-        tables.append(table)
+        if table.info.get("sqlelixir.type") == "VIEW":
+            # XXX
+            # Skip materialized views for now. TimescaleDB complains when
+            # creating a continuous aggregate view on a regular table.
+            if not table.info.get("sqlelixir.materialized", False):
+                views.append(table.info["sqlelixir.DDL"])
+        else:
+            # Temporary tables are created by the application as needed.
+            if not table.info.get("sqlelixir.temporary", False):
+                tables.append(table)
 
     # Create necessary schemas first, since `MetaData.create_all()` does not.
     for schema in metadata._schemas - set(
