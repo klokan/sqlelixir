@@ -1,7 +1,7 @@
-FROM python:3.10
+FROM python:3.12
 
 RUN python -m venv /usr/local/lib/poetry \
-    && /usr/local/lib/poetry/bin/pip install poetry==1.3.2 \
+    && /usr/local/lib/poetry/bin/pip install poetry==1.8.2 \
     && ln -s /usr/local/lib/poetry/bin/poetry /usr/local/bin/poetry
 
 RUN groupadd --gid 1000 debian \

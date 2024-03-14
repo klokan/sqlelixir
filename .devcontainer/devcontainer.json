@@ -2,39 +2,38 @@
     "name": "SQLElixir",
     "context": "..",
     "dockerFile": "../Dockerfile",
-    "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash",
-        "python.languageServer": "Pylance",
-        "python.pythonPath": "/opt/venv/bin/python",
-        "python.analysis.autoSearchPaths": true,
-        "python.analysis.typeCheckingMode": "basic",
-        "python.formatting.provider": "black",
-        "python.formatting.blackPath": "/opt/venv/bin/black",
-        "python.formatting.blackArgs": [
-            "--target-version=py310"
-        ],
-        "python.linting.flake8Path": "/opt/venv/bin/flake8",
-        "python.linting.flake8Args": [
-            "--select=C,E,F,W,B,B950",
-            "--ignore=E203,B306,E501,W503",
-            "--max-line-length=80"
-        ],
-        "python.linting.flake8Enabled": true,
-        "python.testing.unittestEnabled": false,
-        "python.testing.nosetestsEnabled": false,
-        "python.testing.pytestEnabled": true,
-        "python.testing.pytestPath": "/opt/venv/bin/pytest",
-        "[python]": {
-            "editor.formatOnSave": true
-        },
-        "files.watcherExclude": {
-            ".mypy_cache/**/*": true,
-            ".pytest_cache/**/*": true,
-            "**/__pycache__/*": true
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash",
+                "python.pythonPath": "/opt/venv/bin/python",
+                "python.analysis.autoSearchPaths": true,
+                "python.analysis.typeCheckingMode": "basic",
+                "black-formatter.args": [
+                    "--target-version=py310"
+                ],
+                "flake8.args": [
+                    "--select=C,E,F,W,B,B950",
+                    "--ignore=E203,B306,E501,W503",
+                    "--max-line-length=80"
+                ],
+                "python.testing.pytestEnabled": true,
+                "[python]": {
+                    "editor.formatOnSave": true,
+                    "editor.defaultFormatter": "ms-python.black-formatter"
+                },
+                "files.watcherExclude": {
+                    ".mypy_cache/**/*": true,
+                    ".pytest_cache/**/*": true,
+                    "**/__pycache__/*": true
+                }
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.black-formatter",
+                "ms-python.flake8",
+                "eamodio.gitlens"
+            ]
         }
-    },
-    "extensions": [
-        "ms-python.python",
-        "eamodio.gitlens"
-    ]
+    }
 }
