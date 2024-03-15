@@ -653,19 +653,23 @@ def test_create_table_check_constraint(
 
 def test_create_table_temporary(elixir: SQLElixir, module: SimpleNamespace):
     sql = """
+    CREATE SCHEMA widgets;
+
     CREATE TEMPORARY TABLE test (
         widget_id int PRIMARY KEY,
         description text NOT NULL
-    );
+    ) ON COMMIT DROP;
     """
 
     elixir.parse(sql, module)
 
     table = module.test
     assert isinstance(table, Table)
+    assert table.schema is None
     assert "TEMPORARY" in table._prefixes
     assert table.info["sqlelixir.type"] == "TABLE"
     assert table.info["sqlelixir.temporary"]
+    assert table.dialect_options["postgresql"]["on_commit"] == "DROP"
 
 
 def test_create_index(elixir: SQLElixir, module: SimpleNamespace):

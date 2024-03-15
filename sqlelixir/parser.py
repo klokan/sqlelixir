@@ -245,18 +245,13 @@ class Parser:
             self.export(schema, name, type_)
 
     def parse_create_table(self, temporary: bool = False) -> None:
-        schema, name = self.parse_identifier()
+        if temporary:
+            schema = self.schema
+            name = self.expect_name()
+        else:
+            schema, name = self.parse_identifier()
 
-        table = Table(
-            name,
-            self.metadata,
-            schema=schema,
-            prefixes=["TEMPORARY"] if temporary else None,
-            info={
-                "sqlelixir.type": "TABLE",
-                "sqlelixir.temporary": temporary,
-            },
-        )
+        columns = []
         constraints = []
 
         self.expect_punctuation("(")
@@ -266,7 +261,7 @@ class Parser:
                 constraints.append(table_constraint)
             else:
                 column, column_constraints = self.parse_column()
-                table.append_column(column)
+                columns.append(column)
                 constraints.extend(column_constraints)
 
             self.parse_until_end_of_expression()
@@ -278,9 +273,34 @@ class Parser:
 
         self.expect_punctuation(")")
 
-        for constraint in constraints:
-            table.append_constraint(constraint)
+        if self.accept_keyword("ON"):
+            self.expect_keyword("COMMIT")
+            if self.accept_keyword("DROP"):
+                on_commit = "DROP"
+            elif self.accept_keyword("PRESERVE"):
+                self.expect_keyword("ROWS")
+                on_commit = "PRESERVE ROWS"
+            elif self.accept_keyword("DELETE"):
+                self.expect_keyword("ROWS")
+                on_commit = "DELETE ROWS"
+            else:
+                raise RuntimeError("Invalid table ON COMMIT clause")
+        else:
+            on_commit = None
 
+        table = Table(
+            name,
+            self.metadata,
+            *columns,
+            *constraints,
+            schema=None if temporary else schema,
+            info={
+                "sqlelixir.type": "TABLE",
+                "sqlelixir.temporary": temporary,
+            },
+            prefixes=["TEMPORARY"] if temporary else None,
+            postgresql_on_commit=on_commit,
+        )
         self.export(schema, name, table)
 
     def parse_table_constraint(self) -> Constraint | None:
