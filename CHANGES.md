@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.17 (2024-03-15)
+- Add support for ON COMMIT clause on temporary tables.
+
 ### v2.16 (2024-03-14)
 - Add `create_all()`.
 
