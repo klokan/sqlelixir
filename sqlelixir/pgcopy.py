@@ -12,14 +12,14 @@ __all__ = [
 from collections.abc import Iterable, Iterator
 from datetime import date, datetime, timedelta
 from operator import methodcaller
-from typing import BinaryIO, TextIO, Type, TypeVar, cast
+from typing import BinaryIO, TextIO, Type, TypeVar
 from uuid import UUID
 
-import psycopg2.extensions
 import cattrs
 from sqlalchemy import Table
 from sqlalchemy.engine import Connection
-from sqlalchemy.sql.expression import Selectable
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.sql.schema import Column
 from sqlalchemy.dialects import postgresql
 
@@ -106,7 +106,9 @@ def load(
         yield structure(map(nullif, line.rstrip("\n").split("\t")), as_type)
 
 
-def copy_from(connection: Connection, file: BinaryIO | TextIO, columns: list[Column]):
+def copy_from(
+    target: Connection | Session, source: BinaryIO | TextIO, columns: list[Column]
+):
     """Copy data in text format from file to table."""
     if not columns:
         raise RuntimeError("Missing columns")
@@ -123,19 +125,26 @@ def copy_from(connection: Connection, file: BinaryIO | TextIO, columns: list[Col
         table_name = table.name
 
     column_names = ", ".join(column.name for column in columns)
-    target = f"{table_name} ({column_names})"
+    column_list = f"{table_name} ({column_names})"
 
-    with make_cursor(connection) as cursor:
-        cursor.copy_expert(f"COPY {target} FROM STDIN", file)
+    # Check for `Connection`, since `scoped_session` is not actually
+    # a subclass of `Session`.
+    if not isinstance(target, Connection):
+        target = target.connection(bind_arguments={"clause": table})
+
+    with target.connection.cursor() as cursor:
+        cursor.copy_expert(f"COPY {column_list} FROM STDIN", source)
 
 
-def copy_to(connection: Connection, file: BinaryIO | TextIO, statement: Selectable):
+def copy_to(
+    source: Connection | Session, target: BinaryIO | TextIO, statement: ClauseElement
+):
     """Copy data in text format from table to file."""
-    with make_cursor(connection) as cursor:
+    # See above.
+    if not isinstance(source, Connection):
+        source = source.connection(bind_arguments={"clause": statement})
+
+    with source.connection.cursor() as cursor:
         compiled = statement.compile(dialect=postgresql.dialect())
-        source = cursor.mogrify(compiled.string, compiled.params).decode()
-        cursor.copy_expert(f"COPY ({source}) TO STDOUT", file)
-
-
-def make_cursor(connection: Connection) -> psycopg2.extensions.cursor:
-    return cast(psycopg2.extensions.cursor, connection.connection.cursor())
+        sql = cursor.mogrify(compiled.string, compiled.params).decode()
+        cursor.copy_expert(f"COPY ({sql}) TO STDOUT", target)
