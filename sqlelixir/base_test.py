@@ -55,7 +55,7 @@ class Product(enum.Enum):
 
 @pytest.fixture
 def elixir() -> SQLElixir:
-    return SQLElixir()
+    return SQLElixir(execution_options={"bind_key": "TEST"})
 
 
 @pytest.fixture
@@ -776,6 +776,7 @@ def test_create_function(elixir: SQLElixir, module: SimpleNamespace):
     call = module.transmogrify()
     assert isinstance(call, Function)
     assert call.name == "transmogrify"
+    assert call.get_execution_options()["bind_key"] == "TEST"
 
 
 def test_create_procedure_no_parameters(elixir: SQLElixir, module: SimpleNamespace):
@@ -790,6 +791,7 @@ def test_create_procedure_no_parameters(elixir: SQLElixir, module: SimpleNamespa
     call = module.transmogrify()
     assert isinstance(call, TextClause)
     assert call.text == "CALL transmogrify()"
+    assert call.get_execution_options()["bind_key"] == "TEST"
 
 
 def test_create_procedure_parameters(elixir: SQLElixir, module: SimpleNamespace):
@@ -810,6 +812,7 @@ def test_create_procedure_parameters(elixir: SQLElixir, module: SimpleNamespace)
     assert isinstance(call, TextClause)
     assert call.text == "CALL transmogrify(:arg0, :arg1)"
     assert call.compile().params == {"arg0": "deleted", "arg1": "2000-01-01"}
+    assert call.get_execution_options()["bind_key"] == "TEST"
 
 
 def test_prepare(elixir: SQLElixir, module: SimpleNamespace):
@@ -819,9 +822,10 @@ def test_prepare(elixir: SQLElixir, module: SimpleNamespace):
 
     elixir.parse(sql, module)
 
-    widget_count = module.widget_count
-    assert isinstance(widget_count, TextClause)
-    assert widget_count.text == "SELECT count(*) FROM widgets WHERE deleted IS NULL"
+    clause = module.widget_count
+    assert isinstance(clause, TextClause)
+    assert clause.text == "SELECT count(*) FROM widgets WHERE deleted IS NULL"
+    assert clause.get_execution_options()["bind_key"] == "TEST"
 
 
 SCHEMA_TEST_TYPE_STUB = """\

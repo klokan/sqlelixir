@@ -23,13 +23,17 @@ postgres_naming_convention = {
 
 
 class SQLElixir:
-    def __init__(self, metadata: MetaData | None = None):
+    def __init__(
+        self,
+        metadata: MetaData | None = None,
+        execution_options: dict[str, Any] | None = None,
+    ):
         if metadata is None:
             metadata = MetaData(naming_convention=postgres_naming_convention)
 
         self.types = TypeRegistry()
         self.metadata = metadata
-        self.parser = Parser(self.types, self.metadata)
+        self.parser = Parser(self.types, self.metadata, execution_options)
 
     def register_type(self, schema: str | None, name: str, type_: TypeEngine):
         self.types.add(schema, name, type_)

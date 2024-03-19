@@ -2,7 +2,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from importlib import import_module
 from io import TextIOBase
-from typing import Any
+from typing import Any, TypeAlias
 
 import enum
 
@@ -45,47 +45,77 @@ from sqlparse.tokens import (
 from sqlelixir.types import TypeRegistry, custom_enum_type, python_enum_values
 
 
+ExecutionOptions: TypeAlias = dict[str, Any] | None
+
+
+# XXX
+# Type checkers for some reason do not understand the generative
+# decorator around `Executable.execution_options()` and think the
+# resulting method will return `None`.
+def create_executable(clause, options: ExecutionOptions) -> Executable:
+    if options is not None:
+        clause = clause.execution_options(**options)
+    return clause
+
+
 class Function:
-    __slots__ = ["name", "packagenames"]
+    __slots__ = ["name", "packagenames", "execution_options"]
 
     name: str
     packagenames: tuple[str, ...] | None
+    execution_options: ExecutionOptions
 
-    def __init__(self, schema: str | None, name: str):
+    def __init__(
+        self,
+        schema: str | None,
+        name: str,
+        execution_options: ExecutionOptions,
+    ):
         self.name = name
         if schema is not None:
             self.packagenames = (schema,)
         else:
             self.packagenames = None
+        self.execution_options = execution_options
 
     def __call__(self, *args) -> Executable:
-        return FunctionCall(self.name, *args, packagenames=self.packagenames)
+        clause = FunctionCall(self.name, *args, packagenames=self.packagenames)
+        return create_executable(clause, self.execution_options)
 
 
 class Procedure:
-    __slots__ = ["name"]
+    __slots__ = ["name", "execution_options"]
 
     name: str
+    execution_options: ExecutionOptions
 
-    def __init__(self, schema: str | None, name: str):
+    def __init__(
+        self,
+        schema: str | None,
+        name: str,
+        execution_options: ExecutionOptions,
+    ):
         if schema is not None:
             self.name = f"{schema}.{name}"
         else:
             self.name = name
+        self.execution_options = execution_options
 
     def __call__(self, *args) -> Executable:
         if not args:
-            return text_expression(f"CALL {self.name}()")
+            clause = text_expression(f"CALL {self.name}()")
         else:
             params = ", ".join(f":arg{i}" for i in range(len(args)))
-            clause = text_expression(f"CALL {self.name}({params})").bindparams()
             kwargs = {f"arg{i}": arg for i, arg in enumerate(args)}
-            return clause.bindparams(**kwargs)
+            clause = text_expression(f"CALL {self.name}({params})").bindparams(**kwargs)
+
+        return create_executable(clause, self.execution_options)
 
 
 class Parser:
     types: TypeRegistry
     metadata: MetaData
+    execution_options: ExecutionOptions
 
     schema: str | None
     module: Any
@@ -96,9 +126,15 @@ class Parser:
     token: Token
     index: int
 
-    def __init__(self, types: TypeRegistry, metadata: MetaData):
+    def __init__(
+        self,
+        types: TypeRegistry,
+        metadata: MetaData,
+        execution_options: ExecutionOptions,
+    ):
         self.types = types
         self.metadata = metadata
+        self.execution_options = execution_options
 
     def declare_schema(self, schema: str):
         if self.schema is not None:
@@ -798,11 +834,11 @@ class Parser:
 
     def parse_function(self) -> None:
         schema, name = self.parse_identifier()
-        self.export(schema, name, Function(schema, name))
+        self.export(schema, name, Function(schema, name, self.execution_options))
 
     def parse_procedure(self) -> None:
         schema, name = self.parse_identifier()
-        self.export(schema, name, Procedure(schema, name))
+        self.export(schema, name, Procedure(schema, name, self.execution_options))
 
     def parse_prepare(self) -> None:
         self.expect_keyword("PREPARE")
@@ -817,9 +853,9 @@ class Parser:
         if start == end:
             raise RuntimeError("Empty prepared statement")
 
-        expression = self.format(start, end)
-        clause = text_expression(expression)
-
+        clause = create_executable(
+            text_expression(self.format(start, end)), self.execution_options
+        )
         self.export(schema, name, clause)
 
     def accept_name(self) -> str | None:
