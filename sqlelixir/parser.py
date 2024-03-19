@@ -23,8 +23,9 @@ from sqlalchemy.schema import (
 from sqlalchemy.dialects.postgresql import ARRAY, ExcludeConstraint
 from sqlalchemy.schema import MetaData
 from sqlalchemy.sql import text as text_expression
-from sqlalchemy.sql import func as func_generator
+from sqlalchemy.sql import Executable
 from sqlalchemy.sql.expression import TextClause
+from sqlalchemy.sql.functions import Function as FunctionCall
 from sqlalchemy.sql.type_api import TypeEngine
 from sqlalchemy.types import Enum, Text
 
@@ -44,7 +45,26 @@ from sqlparse.tokens import (
 from sqlelixir.types import TypeRegistry, custom_enum_type, python_enum_values
 
 
+class Function:
+    __slots__ = ["name", "packagenames"]
+
+    name: str
+    packagenames: tuple[str, ...] | None
+
+    def __init__(self, schema: str | None, name: str):
+        self.name = name
+        if schema is not None:
+            self.packagenames = (schema,)
+        else:
+            self.packagenames = None
+
+    def __call__(self, *args) -> Executable:
+        return FunctionCall(self.name, *args, packagenames=self.packagenames)
+
+
 class Procedure:
+    __slots__ = ["name"]
+
     name: str
 
     def __init__(self, schema: str | None, name: str):
@@ -53,14 +73,14 @@ class Procedure:
         else:
             self.name = name
 
-    def __call__(self, *args):
+    def __call__(self, *args) -> Executable:
         if not args:
             return text_expression(f"CALL {self.name}()")
-
-        params = ", ".join(f":arg{i}" for i in range(len(args)))
-        clause = text_expression(f"CALL {self.name}({params})").bindparams()
-        kwargs = {f"arg{i}": arg for i, arg in enumerate(args)}
-        return clause.bindparams(**kwargs)
+        else:
+            params = ", ".join(f":arg{i}" for i in range(len(args)))
+            clause = text_expression(f"CALL {self.name}({params})").bindparams()
+            kwargs = {f"arg{i}": arg for i, arg in enumerate(args)}
+            return clause.bindparams(**kwargs)
 
 
 class Parser:
@@ -778,13 +798,7 @@ class Parser:
 
     def parse_function(self) -> None:
         schema, name = self.parse_identifier()
-
-        if schema is not None:
-            clause = getattr(getattr(func_generator, schema), name)
-        else:
-            clause = getattr(func_generator, name)
-
-        self.export(schema, name, clause)
+        self.export(schema, name, Function(schema, name))
 
     def parse_procedure(self) -> None:
         schema, name = self.parse_identifier()

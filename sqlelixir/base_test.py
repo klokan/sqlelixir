@@ -28,7 +28,6 @@ from sqlalchemy.types import (
 )
 
 from sqlelixir import SQLElixir, generate_type_stubs
-from sqlelixir.parser import Procedure
 
 
 class WidgetType(enum.Enum):
@@ -788,7 +787,6 @@ def test_create_procedure_no_parameters(elixir: SQLElixir, module: SimpleNamespa
 
     elixir.parse(sql, module)
 
-    assert isinstance(module.transmogrify, Procedure)
     call = module.transmogrify()
     assert isinstance(call, TextClause)
     assert call.text == "CALL transmogrify()"
@@ -808,7 +806,6 @@ def test_create_procedure_parameters(elixir: SQLElixir, module: SimpleNamespace)
 
     elixir.parse(sql, module)
 
-    assert isinstance(module.transmogrify, Procedure)
     call = module.transmogrify("deleted", "2000-01-01")
     assert isinstance(call, TextClause)
     assert call.text == "CALL transmogrify(:arg0, :arg1)"

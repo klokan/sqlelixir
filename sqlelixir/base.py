@@ -7,11 +7,10 @@ from typing import Any
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.schema import MetaData, Table, CreateSchema
 from sqlalchemy.sql.expression import TextClause
-from sqlalchemy.sql.functions import _FunctionGenerator
 from sqlalchemy.types import TypeEngine, Enum
 
 from sqlelixir.importer import Importer
-from sqlelixir.parser import Parser, Procedure
+from sqlelixir.parser import Function, Parser, Procedure
 from sqlelixir.types import TypeRegistry
 
 
@@ -100,7 +99,7 @@ def create_all(bind: Engine | Connection, metadata: MetaData, checkfirst: bool =
 
 def generate_type_stubs():
     """Generate type stubs for all modules imported by SQLElixir."""
-    object_types = (Enum, Table, _FunctionGenerator, Procedure, TextClause)
+    object_types = (Enum, Function, Procedure, Table, TextClause)
 
     for module in list(sys.modules.values()):
         spec = getattr(module, "__spec__", None)
