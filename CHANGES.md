@@ -1,5 +1,9 @@
 ## Version 2
 
+### v2.18 (2024-03-19)
+- Add custom class for representing functions.
+- Add execution options for executable statements.
+
 ### v2.17 (2024-03-15)
 - Add support for ON COMMIT clause on temporary tables.
 

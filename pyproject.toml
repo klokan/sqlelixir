@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "SQLElixir"
-version = "2.17"
+version = "2.18"
 description = "SQL files as Python modules"
 authors = ["Václav Klusák <vaclav.klusak@maptiler.com>"]
 
