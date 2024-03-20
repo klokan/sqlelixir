@@ -1,5 +1,8 @@
 ## Version 2
 
+### v2.19 (2024-03-20)
+- Add support for session to pgcopy.
+
 ### v2.18 (2024-03-19)
 - Add custom class for representing functions.
 - Add execution options for executable statements.
